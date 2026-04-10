@@ -1,0 +1,12 @@
+[build]
+  publish = "."
+  functions = "netlify/functions"
+
+[functions]
+  node_bundler = "esbuild"
+
+[dev]
+  port = 8888
+  targetPort = 3999
+  framework = "#static"
+  autoLaunch = false
