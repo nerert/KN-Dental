@@ -223,6 +223,13 @@ th{font-weight:700;color:var(--ink2);font-size:0.78rem;text-transform:uppercase;
   <div class="card" style="margin-bottom:16px">
     <label style="font-size:.78rem;font-weight:600;color:var(--ink2);text-transform:uppercase;letter-spacing:.5px">Paciente</label>
     <select id="select-paciente-odo" onchange="setPacienteActivo(this.value)" style="width:100%;margin-top:4px;padding:9px 12px;border:1.5px solid var(--border);border-radius:8px;font-family:inherit;font-size:.9rem"></select>
+    <div style="margin-top:12px">
+      <label style="font-size:.78rem;font-weight:600;color:var(--ink2);text-transform:uppercase;letter-spacing:.5px">Tipo de dentición</label>
+      <div style="display:flex;gap:8px;margin-top:4px">
+        <button type="button" id="odo-tipo-adulto" class="btn btn-sm btn-primary" onclick="setOdontogramaTipo('adulto')" style="flex:1">🧑 Adulto (permanente)</button>
+        <button type="button" id="odo-tipo-nino" class="btn btn-sm btn-secondary" onclick="setOdontogramaTipo('nino')" style="flex:1">🧒 Niño (temporal)</button>
+      </div>
+    </div>
   </div>
   <div class="card">
     <div class="odo-legend" id="odo-legend"></div>
@@ -832,7 +839,7 @@ function setPacienteActivo(id) {
   ['hist-overlay','notas-overlay','odo-overlay','fotos-overlay','pagos-overlay','ruta-overlay'].forEach(oid => { const el = document.getElementById(oid); if(el) el.style.display='none'; });
   cargarHistoria(); cargarNotas(); cargarPresupuestos(); cargarFotos(); renderPagos(); cargarRuta(); renderRutaSelect();
   renderPacientes();
-  renderTablaOdo(id);
+  initOdontograma();
 }
 
 function actualizarSelectsPacientes() {
@@ -985,7 +992,52 @@ const tratamientosPorCondicion = {
   clase1:'', clase2:'', clase3:''
 };
 
+const ODO_DIENTES = {
+  adulto: {
+    sup: [18,17,16,15,14,13,12,11,21,22,23,24,25,26,27,28],
+    inf: [48,47,46,45,44,43,42,41,31,32,33,34,35,36,37,38]
+  },
+  nino: {
+    sup: [55,54,53,52,51,61,62,63,64,65],
+    inf: [85,84,83,82,81,71,72,73,74,75]
+  }
+};
+function esDienteDelTipo(diente, tipo) {
+  if(diente === 'Todos') return true;
+  const t = ODO_DIENTES[tipo] || ODO_DIENTES.adulto;
+  const n = +diente;
+  return t.sup.includes(n) || t.inf.includes(n);
+}
+function odontogramaTodos(tipo) {
+  const t = ODO_DIENTES[tipo] || ODO_DIENTES.adulto;
+  return [...t.sup, ...t.inf];
+}
+let odontogramaTipoActivo = 'adulto';
+function actualizarBotonesOdoTipo() {
+  const a = document.getElementById('odo-tipo-adulto');
+  const n = document.getElementById('odo-tipo-nino');
+  if(!a || !n) return;
+  a.classList.toggle('btn-primary', odontogramaTipoActivo!=='nino');
+  a.classList.toggle('btn-secondary', odontogramaTipoActivo==='nino');
+  n.classList.toggle('btn-primary', odontogramaTipoActivo==='nino');
+  n.classList.toggle('btn-secondary', odontogramaTipoActivo!=='nino');
+}
+function setOdontogramaTipo(tipo) {
+  const pacId = document.getElementById('select-paciente-odo')?.value || pacienteActivo;
+  if(!pacId) { toast('⚠️ Selecciona un paciente'); return; }
+  const pac = DB.pacientes.find(p => p.id === pacId);
+  if(pac) pac.odontogramaTipo = tipo;
+  fbSave('pacientes', pacId, { odontogramaTipo: tipo });
+  initOdontograma();
+  toast(tipo==='nino' ? '🧒 Dentición temporal (niño)' : '🧑 Dentición permanente (adulto)');
+}
+
 function initOdontograma() {
+  const pacId = document.getElementById('select-paciente-odo')?.value || pacienteActivo;
+  const pac = pacId ? DB.pacientes.find(p => p.id === pacId) : null;
+  odontogramaTipoActivo = (pac && pac.odontogramaTipo) || 'adulto';
+  actualizarBotonesOdoTipo();
+
   const legend = document.getElementById('odo-legend');
   legend.innerHTML = '';
   condiciones.forEach(c => {
@@ -1000,8 +1052,7 @@ function initOdontograma() {
       document.getElementById('odo-tratamiento').value = trat;
       const esGeneral = ['pdb','clase1','clase2','clase3'].includes(c.key);
       if(esGeneral) {
-        const todos = [18,17,16,15,14,13,12,11,21,22,23,24,25,26,27,28,48,47,46,45,44,43,42,41,31,32,33,34,35,36,37,38];
-        todos.forEach(n => colorDiente(n, c.key));
+        odontogramaTodos(odontogramaTipoActivo).forEach(n => colorDiente(n, c.key));
         document.getElementById('panel-odo').style.display = 'block';
         document.getElementById('badge-diente').textContent = 'Todos';
         selDiente = 'todos';
@@ -1016,9 +1067,11 @@ function initOdontograma() {
   const condSel = document.getElementById('odo-condicion');
   condSel.innerHTML = '<option value="">— Condición —</option>' + condiciones.map(c => `<option value="${c.key}">${c.label}</option>`).join('');
 
-  const sup = [18,17,16,15,14,13,12,11,21,22,23,24,25,26,27,28];
-  const inf = [48,47,46,45,44,43,42,41,31,32,33,34,35,36,37,38];
+  const { sup, inf } = ODO_DIENTES[odontogramaTipoActivo];
   const grid = document.getElementById('odo-grid');
+  grid.innerHTML = '';
+  selDiente = null;
+  const panelOdo = document.getElementById('panel-odo'); if(panelOdo) panelOdo.style.display = 'none';
   [sup,inf].forEach(row => {
     const rowEl = document.createElement('div'); rowEl.className='odo-row';
     row.forEach(num => {
@@ -1030,6 +1083,8 @@ function initOdontograma() {
     });
     grid.appendChild(rowEl);
   });
+
+  if(pacId) renderTablaOdo(pacId);
 }
 
 function seleccionarDiente(num) {
@@ -1056,7 +1111,9 @@ function colorDiente(num, key) {
 
 function renderTablaOdo(pacId) {
   document.querySelectorAll('.diente-wrap').forEach(d => d.removeAttribute('data-e'));
-  const regs = DB.odontograma.filter(r => r.pacienteId === pacId);
+  const pac = DB.pacientes.find(p => p.id === pacId);
+  const tipo = (pac && pac.odontogramaTipo) || 'adulto';
+  const regs = DB.odontograma.filter(r => r.pacienteId === pacId && esDienteDelTipo(r.diente, tipo));
   regs.forEach(r => { if(r.diente !== 'Todos') colorDiente(r.diente, r.condicion); });
   const div = document.getElementById('tabla-odo');
   if(!regs.length) { div.innerHTML=''; return; }
@@ -1130,10 +1187,16 @@ async function guardarOdo() {
 }
 
 function cuadPor(num) {
-  if(num>=11&&num<=18) return 'Superior derecho';
-  if(num>=21&&num<=28) return 'Superior izquierdo';
-  if(num>=31&&num<=38) return 'Inferior izquierdo';
-  return 'Inferior derecho';
+  const n = +num;
+  if(n>=11&&n<=18) return 'Superior derecho';
+  if(n>=21&&n<=28) return 'Superior izquierdo';
+  if(n>=31&&n<=38) return 'Inferior izquierdo';
+  if(n>=41&&n<=48) return 'Inferior derecho';
+  if(n>=51&&n<=55) return 'Superior derecho (temporal)';
+  if(n>=61&&n<=65) return 'Superior izquierdo (temporal)';
+  if(n>=71&&n<=75) return 'Inferior izquierdo (temporal)';
+  if(n>=81&&n<=85) return 'Inferior derecho (temporal)';
+  return 'General';
 }
 
 async function borrarRegistroOdo(id) {
@@ -2212,7 +2275,7 @@ function exportarPDF(seccion) {
   const {jsPDF} = window.jspdf; const doc = new jsPDF();
   if(seccion==='odontograma') {
     let y = pdfHeader(doc,'Odontograma',pac);
-    const regs = DB.odontograma.filter(r=>r.pacienteId===pac.id);
+    const regs = DB.odontograma.filter(r=>r.pacienteId===pac.id && esDienteDelTipo(r.diente, pac.odontogramaTipo || 'adulto'));
     if(!regs.length) { doc.text('Sin diagnósticos registrados.',14,y+8); }
     else y = pdfSectionTitle(doc,'DIAGNOSTICOS',y); doc.autoTable({startY:y,head:[['Diente','Condicion','Superficie','Tratamiento']],body:regs.map(r=>[r.diente,(condiciones&&condiciones.find)?((condiciones.find(c=>c.key===r.condicion)||{}).label||r.condicion):r.condicion,r.superficie||'—',r.tratamiento||'—']),styles:{fontSize:9},headStyles:{fillColor:[214,168,196]},alternateRowStyles:{fillColor:[253,240,248]}});
     doc.save(`Odontograma_${pac.nombre}_${pac.apellido}.pdf`);
@@ -2401,11 +2464,534 @@ function generarExpediente() {
   exportarExpediente(_expPacId);
 }
 
+// ── EXPEDIENTE (diseño KN Dental — membrete rosa, cards, Fraunces/Manrope) ──
+const XP_MESES     = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
+const XP_MESES_ABR = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
+
+function xpParseFecha(str) {
+  if(!str) return null;
+  if(str instanceof Date) return isNaN(str) ? null : str;
+  const m = String(str).match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if(m) return new Date(+m[3], +m[2]-1, +m[1]);
+  const d = new Date(str);
+  return isNaN(d) ? null : d;
+}
+function xpFechaLarga(input) {
+  const d = input instanceof Date ? input : xpParseFecha(input);
+  if(!d) return typeof input === 'string' ? input : '—';
+  return `${d.getDate()} de ${XP_MESES[d.getMonth()]}, ${d.getFullYear()}`;
+}
+function xpFechaCorta(input) {
+  const d = xpParseFecha(input);
+  if(!d) return typeof input === 'string' ? input : '—';
+  return `${d.getDate()} ${XP_MESES_ABR[d.getMonth()]} ${d.getFullYear()}`;
+}
+function xpHex(hex) {
+  const h = (hex||'#8a7d95').replace('#','');
+  const full = h.length===3 ? h.split('').map(c=>c+c).join('') : h;
+  const n = parseInt(full,16) || 0x8a7d95;
+  return [(n>>16)&255, (n>>8)&255, n&255];
+}
+
+const XP = {
+  pageW: 210, pageH: 297,
+  band: [253,240,248], bandBorder: [214,168,196],
+  heading: [64,50,90], muted: [122,106,148], label: [122,47,86],
+  eyebrow: [192,144,184], cardBorder: [236,227,245],
+  tableHead: [138,125,149], tableLine: [242,236,246],
+  footText: [138,125,149],
+  green: [92,107,69], greenBg: [238,242,230], greenDot: [122,138,94],
+  pendingBg: [238,227,240], pendingText: [138,85,112],
+  contactLine: 'Av. Mirador #7538, Col. Campestre Washington, Chihuahua · 614 224 2833 · cd.karenlopezvenzor@gmail.com'
+};
+
+function xpCard(doc, x, y, w, h, opts) {
+  opts = opts || {};
+  doc.setLineWidth(0.25);
+  if(opts.fill) {
+    doc.setFillColor(...opts.fill);
+    doc.setDrawColor(...(opts.border || opts.fill));
+    doc.roundedRect(x, y, w, h, 2.5, 2.5, 'FD');
+  } else {
+    doc.setDrawColor(...(opts.border || XP.cardBorder));
+    doc.roundedRect(x, y, w, h, 2.5, 2.5, 'S');
+  }
+}
+
+function xpTagWidth(doc, text, dot) {
+  doc.setFont('helvetica','bold'); doc.setFontSize(7.6);
+  return doc.getTextWidth(text) + 6 + (dot ? 4 : 0);
+}
+function xpTag(doc, text, x, y, opts) {
+  opts = opts || {};
+  const h = 5.4;
+  const w = xpTagWidth(doc, text, opts.dot);
+  if(opts.outline) {
+    doc.setDrawColor(...opts.outline); doc.setLineWidth(0.35);
+    doc.roundedRect(x, y, w, h, h/2, h/2, 'S');
+  } else {
+    doc.setFillColor(...(opts.bg || [244,240,247]));
+    doc.roundedRect(x, y, w, h, h/2, h/2, 'F');
+  }
+  let tx = x + 3;
+  if(opts.dot) { doc.setFillColor(...opts.dot); doc.circle(tx+0.8, y+h/2, 0.8, 'F'); tx += 4; }
+  doc.setFont('helvetica','bold'); doc.setFontSize(7.6);
+  doc.setTextColor(...(opts.color || XP.heading));
+  doc.text(text, tx, y+h/2+1.35);
+  return w;
+}
+
+function xpBandCover(doc, pac, fechaStr) {
+  doc.setFillColor(...XP.band); doc.rect(0,0,XP.pageW,32,'F');
+  doc.setDrawColor(...XP.bandBorder); doc.setLineWidth(0.7); doc.line(0,32,XP.pageW,32);
+  try { doc.addImage(PDF_LOGO, 'PNG', 14, 7, 27.2, 18); } catch(e) {}
+  doc.setFont('helvetica','bold'); doc.setFontSize(6.6); doc.setTextColor(...XP.eyebrow);
+  doc.text('KN DENTAL', 46, 11);
+  doc.setFont('times','bold'); doc.setFontSize(13.5); doc.setTextColor(...XP.heading);
+  doc.text('Consultorio Dental', 46, 17.5);
+  doc.setFont('helvetica','normal'); doc.setFontSize(8); doc.setTextColor(...XP.muted);
+  doc.text('Dra. Karen López Venzor · Céd. Prof. 15490340', 46, 22.5);
+  doc.setFont('helvetica','bold'); doc.setFontSize(8.5); doc.setTextColor(...XP.heading);
+  doc.text('Expediente clínico', XP.pageW-14, 14.5, {align:'right'});
+  doc.setFont('helvetica','normal'); doc.setFontSize(8); doc.setTextColor(...XP.muted);
+  doc.text(fechaStr, XP.pageW-14, 19.5, {align:'right'});
+  return 32;
+}
+function xpBandSection(doc, titulo, pac, fechaStr) {
+  doc.setFillColor(...XP.band); doc.rect(0,0,XP.pageW,24,'F');
+  doc.setDrawColor(...XP.bandBorder); doc.setLineWidth(0.7); doc.line(0,24,XP.pageW,24);
+  doc.setFont('times','bold'); doc.setFontSize(15); doc.setTextColor(...XP.heading);
+  doc.text(titulo, 14, 13);
+  doc.setFont('helvetica','normal'); doc.setFontSize(8); doc.setTextColor(...XP.muted);
+  doc.text(`${pac.nombre} ${pac.apellido}${pac.tel ? ' · '+pac.tel : ''}`, 14, 18.5);
+  doc.setFontSize(8); doc.setTextColor(...XP.muted);
+  doc.text(fechaStr, XP.pageW-14, 15, {align:'right'});
+  return 24;
+}
+function xpNewSectionPage(doc, titulo, pac, fechaStr) {
+  doc.addPage();
+  return xpBandSection(doc, titulo, pac, fechaStr);
+}
+const XP_FOOTER_TOP = 271;
+function xpFooter(doc) {
+  const n = doc.internal.getNumberOfPages();
+  const igText = 'c.d.karenlopez';
+  const fbText = 'C.D. Karen Lopez Venzor';
+  const iconS = 3.4;
+  for(let i=1;i<=n;i++) {
+    doc.setPage(i);
+    doc.setDrawColor(...XP.cardBorder); doc.setLineWidth(0.2);
+    doc.line(14, XP_FOOTER_TOP, 196, XP_FOOTER_TOP);
+    doc.setFont('helvetica','normal'); doc.setFontSize(6.8); doc.setTextColor(...XP.footText);
+    doc.text(XP.contactLine, XP.pageW/2, XP_FOOTER_TOP+5.5, {align:'center'});
+    doc.text(`${i} / ${n}`, 196, XP_FOOTER_TOP+5.5, {align:'right'});
+
+    doc.setFontSize(6.8);
+    const igW = doc.getTextWidth(igText), fbW = doc.getTextWidth(fbText);
+    const totalW = iconS+1.6+igW+7+iconS+1.6+fbW;
+    let sx = XP.pageW/2 - totalW/2;
+    const socialY = XP_FOOTER_TOP+11.5;
+    try { doc.addImage(PDF_IG, 'PNG', sx, socialY-2.6, iconS, iconS); } catch(e) {}
+    doc.setTextColor(...XP.footText);
+    doc.text(igText, sx+iconS+1.6, socialY);
+    const fbX = sx+iconS+1.6+igW+7;
+    try { doc.addImage(PDF_FB, 'PNG', fbX, socialY-2.6, iconS, iconS); } catch(e) {}
+    doc.text(fbText, fbX+iconS+1.6, socialY);
+  }
+}
+
+function xpPortada(doc, pac, h, fechaStr) {
+  let y = xpBandCover(doc, pac, fechaStr) + 14;
+  doc.setFont('helvetica','bold'); doc.setFontSize(7.5); doc.setTextColor(...XP.eyebrow);
+  doc.text('PACIENTE', 14, y);
+  y += 9;
+  doc.setFont('times','bold'); doc.setFontSize(21); doc.setTextColor(...XP.heading);
+  doc.text(`${pac.nombre} ${pac.apellido}`, 14, y);
+  y += 6;
+  doc.setFont('helvetica','normal'); doc.setFontSize(9.5); doc.setTextColor(...XP.muted);
+  if(pac.tel) doc.text(`Teléfono ${pac.tel}`, 14, y);
+  y += 11;
+
+  const hasHistoria = h && Object.values(h).some(v => v);
+  if(hasHistoria) {
+    const colW = (182-8)/2, cardH = 27;
+    xpCard(doc, 14, y, colW, cardH);
+    doc.setFont('helvetica','bold'); doc.setFontSize(9); doc.setTextColor(...XP.label);
+    doc.text('Datos personales', 18, y+7);
+    doc.setFont('helvetica','normal'); doc.setFontSize(8.3); doc.setTextColor(...XP.muted);
+    doc.text(`Fecha de nacimiento — ${h.fechanac||''}`.trim(), 18, y+13);
+    doc.text(`Sexo — ${h.sexo||''}`.trim(), 18, y+18);
+    doc.text(`Ocupación — ${h.ocupacion||''}`.trim(), 18, y+23);
+
+    const x2 = 14+colW+8;
+    xpCard(doc, x2, y, colW, cardH);
+    doc.setFont('helvetica','bold'); doc.setFontSize(9); doc.setTextColor(...XP.label);
+    doc.text('Antecedentes médicos', x2+4, y+7);
+    let ay = y+13;
+    [['Enfermedades:',h.enf], ['Alergias:',h.alergias], ['Medicamentos:',h.medicamentos]].forEach(([label,val]) => {
+      doc.setFont('helvetica','normal'); doc.setFontSize(8.3);
+      doc.setTextColor(...XP.muted); doc.text(label, x2+4, ay);
+      doc.setTextColor(...XP.heading); doc.text(val || '—', x2+4+doc.getTextWidth(label)+1.5, ay);
+      ay += 5;
+    });
+    y += cardH + 8;
+
+    const extra = [];
+    if(h.cirugias) extra.push(['Cirugías previas:', h.cirugias]);
+    if(h.habitos)  extra.push(['Hábitos:', h.habitos]);
+    if(h.motivo || extra.length) {
+      const cardH2 = 14 + (h.motivo ? 6 : 0);
+      xpCard(doc, 14, y, 182, cardH2);
+      doc.setFont('helvetica','bold'); doc.setFontSize(9); doc.setTextColor(...XP.label);
+      doc.text('Motivo e historia', 18, y+7);
+      let mx = 18;
+      extra.forEach(([label,val]) => {
+        doc.setFont('helvetica','normal'); doc.setFontSize(8.3);
+        doc.setTextColor(...XP.muted); doc.text(label, mx, y+13);
+        doc.setTextColor(...XP.heading);
+        doc.text(val, mx+doc.getTextWidth(label)+1.5, y+13);
+        mx += 90;
+      });
+      if(h.motivo) {
+        doc.setFont('helvetica','normal'); doc.setFontSize(8.3);
+        doc.setTextColor(...XP.muted); doc.text('Motivo de consulta:', 18, y+19);
+        doc.setTextColor(...XP.heading);
+        doc.text(h.motivo, 18+doc.getTextWidth('Motivo de consulta:')+1.5, y+19);
+      }
+      y += cardH2 + 10;
+    }
+  }
+
+  doc.setFont('helvetica','normal'); doc.setFontSize(8.3); doc.setTextColor(...XP.muted);
+  const closing = doc.splitTextToSize('Este expediente resume tu historial clínico, plan de tratamiento y estado de cuenta con nuestro consultorio. Ante cualquier duda, con gusto te atendemos.', 182);
+  doc.text(closing, 14, y+4);
+}
+
+function xpDrawTooth(doc, cx, cy, num, colorHex) {
+  const rx = 3.5, ry = 5;
+  if(colorHex) {
+    const rgb = xpHex(colorHex);
+    doc.setFillColor(...rgb); doc.setDrawColor(...rgb);
+  } else {
+    doc.setFillColor(255,255,255); doc.setDrawColor(...XP.bandBorder);
+  }
+  doc.setLineWidth(0.35);
+  doc.ellipse(cx, cy, rx, ry, 'FD');
+  doc.setFont('helvetica','bold'); doc.setFontSize(5.4); doc.setTextColor(...XP.muted);
+  doc.text(String(num), cx, cy+ry+3.2, {align:'center'});
+}
+function xpOdontogramaChart(doc, y, regs, tipo) {
+  const { sup, inf } = ODO_DIENTES[tipo] || ODO_DIENTES.adulto;
+  const porDiente = {};
+  regs.forEach(r => { if(r.diente !== 'Todos') porDiente[String(r.diente)] = r.condicion; });
+  const general = regs.filter(r => r.diente === 'Todos').pop();
+  const cols = sup.length, stepX = 182/cols;
+  doc.setFont('helvetica','bold'); doc.setFontSize(6.4); doc.setTextColor(...XP.eyebrow);
+  doc.text('SUPERIOR', 14, y);
+  doc.setFont('helvetica','normal'); doc.setFontSize(7); doc.setTextColor(...XP.muted);
+  doc.text(tipo==='nino' ? 'Dentición temporal' : 'Dentición permanente', 196, y, {align:'right'});
+  [sup, inf].forEach((row, ri) => {
+    const cy = y + 6 + ri*17;
+    row.forEach((num, i) => {
+      const cx = 14 + stepX*i + stepX/2;
+      const key = porDiente[String(num)] || (general ? general.condicion : null);
+      const color = key ? (condiciones.find(c=>c.key===key)||{}).color : null;
+      xpDrawTooth(doc, cx, cy, num, color);
+    });
+    if(ri===0) {
+      doc.setFont('helvetica','bold'); doc.setFontSize(6.4); doc.setTextColor(...XP.eyebrow);
+      doc.text('INFERIOR', 14, cy+11);
+    }
+  });
+  return y + 6 + 17 + 12;
+}
+
+function xpOdontogramaPage(doc, pac, fechaStr, regs, tipo) {
+  let y = xpNewSectionPage(doc, 'Odontograma', pac, fechaStr) + 10;
+  if(!regs.length) {
+    doc.setFont('helvetica','normal'); doc.setFontSize(9); doc.setTextColor(...XP.muted);
+    doc.text('Sin diagnósticos registrados.', 14, y);
+    return;
+  }
+  y = xpOdontogramaChart(doc, y, regs, tipo);
+
+  const usedKeys = [...new Set(regs.map(r=>r.condicion))];
+  let lx = 14, ly = y;
+  usedKeys.forEach(key => {
+    const c = condiciones.find(cc=>cc.key===key) || {label:key, color:'#8a7d95'};
+    const w = xpTagWidth(doc, c.label, true);
+    if(lx + w > 196) { lx = 14; ly += 8; }
+    xpTag(doc, c.label, lx, ly, {bg:[244,240,247], color:XP.heading, dot: xpHex(c.color)});
+    lx += w + 4;
+  });
+  y = ly + 12;
+
+  const rows = regs.slice().sort((a,b) => {
+    if(a.diente==='Todos') return 1;
+    if(b.diente==='Todos') return -1;
+    return (+a.diente) - (+b.diente);
+  });
+  doc.autoTable({
+    startY: y,
+    head: [['DIENTE','CONDICIÓN','SUPERFICIE','TRATAMIENTO']],
+    body: rows.map(r => [
+      r.diente==='Todos' ? 'Todos' : `#${r.diente}`,
+      (condiciones.find(c=>c.key===r.condicion)||{}).label || r.condicion || '—',
+      r.superficie || '—',
+      r.tratamiento || '—'
+    ]),
+    theme: 'plain',
+    styles: { fontSize: 8.3, textColor: XP.heading, cellPadding:{top:2.6,bottom:2.6,left:2,right:2}, lineWidth:{top:0,left:0,right:0,bottom:0.15}, lineColor: XP.tableLine },
+    headStyles: { textColor: XP.tableHead, fontStyle:'bold', fontSize:6.8, lineWidth:{top:0,left:0,right:0,bottom:0.3}, lineColor: XP.tableLine },
+    columnStyles: { 0: { fontStyle:'bold', textColor:[138,85,112], cellWidth:20 } },
+    margin: { left: 14, right: 14, bottom: 32 },
+    didParseCell: (data) => {
+      if(data.row.section==='body' && data.row.raw[0]==='Todos' && data.column.index===0) {
+        data.cell.styles.textColor = XP.green;
+      }
+    }
+  });
+}
+
+function xpNotasPage(doc, pac, fechaStr, notas) {
+  let y = xpNewSectionPage(doc, 'Notas clínicas', pac, fechaStr) + 8;
+  if(!notas.length) {
+    doc.setFont('helvetica','normal'); doc.setFontSize(9); doc.setTextColor(...XP.muted);
+    doc.text('Sin notas clínicas.', 14, y);
+    return;
+  }
+  notas.forEach((n, idx) => {
+    doc.setFont('helvetica','normal'); doc.setFontSize(8.6);
+    const lines = doc.splitTextToSize(n.hallazgos||'', 160);
+    const blockH = Math.max(18, 12 + lines.length*4);
+    if(y + blockH > 262) y = xpNewSectionPage(doc, 'Notas clínicas', pac, fechaStr) + 8;
+    doc.setFillColor(...XP.bandBorder); doc.circle(17.5, y+3, 1.3, 'F');
+    if(idx < notas.length-1) {
+      doc.setDrawColor(...XP.cardBorder); doc.setLineWidth(0.3);
+      doc.line(17.5, y+5, 17.5, y+blockH+2);
+    }
+    xpCard(doc, 24, y, 172, blockH);
+    doc.setFont('helvetica','bold'); doc.setFontSize(8.5); doc.setTextColor(...XP.label);
+    doc.text(xpFechaLarga(n.fecha), 28, y+7);
+    doc.setFont('helvetica','normal'); doc.setFontSize(8.6); doc.setTextColor(...XP.heading);
+    doc.text(lines, 28, y+13);
+    y += blockH + 6;
+  });
+}
+
+function xpPresupuestosPage(doc, pac, fechaStr, presups) {
+  let y = xpNewSectionPage(doc, 'Presupuestos', pac, fechaStr) + 8;
+  if(!presups.length) {
+    doc.setFont('helvetica','normal'); doc.setFontSize(9); doc.setTextColor(...XP.muted);
+    doc.text('Sin presupuestos registrados.', 14, y);
+    return;
+  }
+  presups.forEach(pr => {
+    const { subtotal, descMonto, total } = calcDescuento(pr);
+    const hasDesc = pr.items.some(it => (it.descuento||0) > 0) || descMonto > pr.items.reduce((s,it)=> s+(it.costo*(it.descuento||0)/100),0);
+    const head = hasDesc ? ['PROCEDIMIENTO','PRECIO','DESC.','TOTAL'] : ['PROCEDIMIENTO','PRECIO','TOTAL'];
+    const body = pr.items.map(it => {
+      const d = it.descuento||0; const final = it.costo - it.costo*d/100;
+      return hasDesc
+        ? [it.proc, `$${it.costo.toLocaleString()}`, d>0?`${d}%`:'—', `$${final.toLocaleString()}`]
+        : [it.proc, `$${it.costo.toLocaleString()}`, `$${it.costo.toLocaleString()}`];
+    });
+    const tagLabel = `$${total.toLocaleString()}`;
+
+    if(y > 238) y = xpNewSectionPage(doc, 'Presupuestos', pac, fechaStr) + 8;
+
+    doc.setFont('helvetica','bold'); doc.setFontSize(9.5); doc.setTextColor(...XP.heading);
+    doc.text(xpFechaLarga(pr.fecha), 14, y+4);
+    const tw = xpTagWidth(doc, tagLabel);
+    xpTag(doc, tagLabel, 196-tw, y, {bg:[253,240,248], color:[138,85,112]});
+    y += 9;
+
+    doc.autoTable({
+      startY: y,
+      head: [head],
+      body,
+      theme: 'plain',
+      styles: { fontSize: 7.6, textColor: XP.heading, cellPadding:{top:2,bottom:2,left:2,right:2}, lineWidth:{top:0,left:0,right:0,bottom:0.15}, lineColor: XP.tableLine },
+      headStyles: { textColor: XP.tableHead, fontStyle:'bold', fontSize:6.6, lineWidth:{top:0,left:0,right:0,bottom:0.3}, lineColor: XP.tableLine },
+      columnStyles: hasDesc
+        ? {1:{halign:'right',cellWidth:24},2:{halign:'right',cellWidth:18},3:{halign:'right',cellWidth:24}}
+        : {1:{halign:'right',cellWidth:28},2:{halign:'right',cellWidth:28}},
+      margin: { left: 14, right: 14, bottom: 32 }
+    });
+    y = doc.lastAutoTable.finalY + 4;
+
+    const parts = descMonto > 0
+      ? [{label:`Total $${total.toLocaleString()}`,bold:true}, {label:`Desc. -$${descMonto.toLocaleString()}`}, {label:`Subtotal $${subtotal.toLocaleString()}`}]
+      : [{label:`Total $${total.toLocaleString()}`,bold:true}];
+    let sx = 196;
+    parts.forEach(p => {
+      doc.setFont('helvetica', p.bold?'bold':'normal'); doc.setFontSize(p.bold?8.5:7.8);
+      doc.setTextColor(...(p.bold?XP.heading:XP.muted));
+      doc.text(p.label, sx, y+4, {align:'right'});
+      sx -= doc.getTextWidth(p.label) + 10;
+    });
+    y += 12;
+  });
+}
+
+function xpRutaPage(doc, pac, fechaStr, pasos) {
+  let y = xpNewSectionPage(doc, 'Ruta clínica', pac, fechaStr) + 10;
+  if(!pasos.length) {
+    doc.setFont('helvetica','normal'); doc.setFontSize(9); doc.setTextColor(...XP.muted);
+    doc.text('Sin pasos registrados.', 14, y);
+    return;
+  }
+  pasos.forEach((p, idx) => {
+    if(y > 262) y = xpNewSectionPage(doc, 'Ruta clínica', pac, fechaStr) + 10;
+    const done = p.status === 'Completado';
+    doc.setFillColor(...(done ? XP.greenDot : XP.pendingBg));
+    doc.circle(19, y, 4.6, 'F');
+    doc.setFont('helvetica','bold'); doc.setFontSize(8);
+    doc.setTextColor(...(done ? [255,255,255] : XP.pendingText));
+    doc.text(String(idx+1), 19, y+1.3, {align:'center'});
+    if(idx < pasos.length-1) {
+      doc.setDrawColor(...XP.cardBorder); doc.setLineWidth(0.3);
+      doc.line(19, y+4.6, 19, y+13.5);
+    }
+    doc.setFont('helvetica','normal'); doc.setFontSize(9); doc.setTextColor(...XP.heading);
+    doc.text(p.proc || '', 28, y+1.3);
+    const status = p.status || 'Pendiente';
+    const w = xpTagWidth(doc, status);
+    if(done) xpTag(doc, status, 196-w, y-2.7, {bg: XP.greenBg, color: XP.green});
+    else xpTag(doc, status, 196-w, y-2.7, {outline: XP.bandBorder, color: XP.pendingText});
+    y += 14;
+  });
+}
+
+function xpPagosPage(doc, pac, fechaStr, presupsPac, pagosPac) {
+  let y = xpNewSectionPage(doc, 'Pagos', pac, fechaStr) + 8;
+  const totalPresupuestado = presupsPac.reduce((s,pr) => s + calcDescuento(pr).total, 0);
+  const totalPagado = pagosPac.reduce((s,p) => s + (p.monto||0), 0);
+  const saldo = Math.max(0, totalPresupuestado - totalPagado);
+
+  xpCard(doc, 14, y, 182, 22, { fill: XP.band, border: [243,217,234] });
+  const stats = [
+    [`$${totalPresupuestado.toLocaleString()}`, 'Total presupuestado', XP.heading],
+    [`$${totalPagado.toLocaleString()}`, 'Total pagado', XP.green],
+    [`$${saldo.toLocaleString()}`, 'Saldo pendiente', XP.pendingText]
+  ];
+  const colW = 182/3;
+  stats.forEach(([val,label,color], i) => {
+    const cx = 14 + colW*i + colW/2;
+    doc.setFont('times','bold'); doc.setFontSize(15); doc.setTextColor(...color);
+    doc.text(val, cx, y+11, {align:'center'});
+    doc.setFont('helvetica','normal'); doc.setFontSize(7); doc.setTextColor(...XP.muted);
+    doc.text(label, cx, y+16.5, {align:'center'});
+  });
+  y += 30;
+
+  if(presupsPac.length) {
+    const colW2 = (182-6)/2;
+    presupsPac.forEach((pr, i) => {
+      const col = i % 2, row = Math.floor(i/2);
+      const x = 14 + col*(colW2+6);
+      const yy = y + row*22;
+      if(yy + 18 > 260) return;
+      const pagosPr = pagosPac.filter(p => p.presupuestoId === pr.id);
+      const { total } = calcDescuento(pr);
+      const pagado = pagosPr.reduce((s,p) => s+(p.monto||0), 0);
+      const saldoPr = Math.max(0, total-pagado);
+      xpCard(doc, x, yy, colW2, 18);
+      doc.setFont('helvetica','bold'); doc.setFontSize(8); doc.setTextColor(...XP.label);
+      doc.text(`Presupuesto ${i+1} · ${pr.fecha}`, x+4, yy+6.5);
+      doc.setFont('helvetica','normal'); doc.setFontSize(7.6); doc.setTextColor(...XP.heading);
+      doc.text(`Presupuestado $${total.toLocaleString()} · Pagado $${pagado.toLocaleString()} · Saldo $${saldoPr.toLocaleString()}`, x+4, yy+12.5);
+    });
+    y += Math.ceil(presupsPac.length/2)*22 + 8;
+  }
+
+  doc.setFont('helvetica','bold'); doc.setFontSize(9.5); doc.setTextColor(...XP.heading);
+  doc.text('Historial de pagos', 14, y);
+  y += 5;
+
+  const historial = pagosPac.slice().sort((a,b) => (xpParseFecha(b.fecha)||0) - (xpParseFecha(a.fecha)||0));
+  if(historial.length) {
+    doc.autoTable({
+      startY: y,
+      head: [['FECHA','CONCEPTO','PRESUPUESTO','MONTO']],
+      body: historial.map(p => {
+        const pr = presupsPac.find(x => x.id === p.presupuestoId);
+        return [xpFechaCorta(p.fecha), p.concepto||'—', pr ? pr.fecha : '—', `$${(p.monto||0).toLocaleString()}`];
+      }),
+      theme: 'plain',
+      styles: { fontSize: 8.3, textColor: XP.heading, cellPadding:{top:2.4,bottom:2.4,left:2,right:2}, lineWidth:{top:0,left:0,right:0,bottom:0.15}, lineColor: XP.tableLine },
+      headStyles: { textColor: XP.tableHead, fontStyle:'bold', fontSize:6.8, lineWidth:{top:0,left:0,right:0,bottom:0.3}, lineColor: XP.tableLine },
+      columnStyles: { 3: { halign:'right', fontStyle:'bold' } },
+      margin: { left: 14, right: 14, bottom: 32 }
+    });
+    y = doc.lastAutoTable.finalY + 6;
+  } else {
+    doc.setFont('helvetica','normal'); doc.setFontSize(9); doc.setTextColor(...XP.muted);
+    doc.text('Sin pagos registrados.', 14, y+4);
+    y += 10;
+  }
+  doc.setFont('helvetica','bold'); doc.setFontSize(8.6); doc.setTextColor(...XP.heading);
+  doc.text(`Total pagado a la fecha · $${totalPagado.toLocaleString()}`, 196, y, {align:'right'});
+}
+
+function xpFotoPlaceholder(doc, x, y, w, h) {
+  doc.setFillColor(248,244,250); doc.setDrawColor(...XP.cardBorder); doc.setLineWidth(0.25);
+  doc.roundedRect(x, y, w, h, 2.5, 2.5, 'FD');
+  doc.setFont('helvetica','normal'); doc.setFontSize(7); doc.setTextColor(...XP.muted);
+  doc.text('Sin fotografía', x+w/2, y+h/2+1.2, {align:'center'});
+}
+async function xpFotosPage(doc, pac, fechaStr, pacId) {
+  let y = xpNewSectionPage(doc, 'Fotografías clínicas', pac, fechaStr) + 10;
+  let fotos = [];
+  try {
+    const fotoDoc = await db.collection('fotos').doc(pacId).get();
+    fotos = fotoDoc.exists ? (fotoDoc.data().lista || []) : [];
+  } catch(e) { console.warn('Error cargando fotos:', e); }
+
+  const total = Math.max(fotos.length, 6);
+  const cols = 3, gap = 6;
+  const cellW = (182 - (cols-1)*gap)/cols, cellH = 42;
+  let col = 0;
+  for(let i=0; i<total; i++) {
+    if(col === 0 && y + cellH > 258) y = xpNewSectionPage(doc, 'Fotografías clínicas', pac, fechaStr) + 10;
+    const x = 14 + col*(cellW+gap);
+    const f = fotos[i];
+    if(f) {
+      try {
+        const res = await fetch(f.url);
+        const blob = await res.blob();
+        const b64 = await new Promise((resolve, reject) => {
+          const img = new Image();
+          img.onload = () => {
+            const canvas = document.createElement('canvas');
+            canvas.width = img.naturalWidth; canvas.height = img.naturalHeight;
+            canvas.getContext('2d').drawImage(img,0,0);
+            resolve(canvas.toDataURL('image/jpeg', 0.85));
+          };
+          img.onerror = reject;
+          img.src = URL.createObjectURL(blob);
+        });
+        doc.addImage(b64, 'JPEG', x, y, cellW, cellH);
+        doc.setDrawColor(...XP.cardBorder); doc.setLineWidth(0.25);
+        doc.roundedRect(x, y, cellW, cellH, 2.5, 2.5, 'S');
+      } catch(e) { xpFotoPlaceholder(doc, x, y, cellW, cellH); }
+    } else {
+      xpFotoPlaceholder(doc, x, y, cellW, cellH);
+    }
+    col++;
+    if(col >= cols) { col = 0; y += cellH + gap; }
+  }
+  if(col !== 0) y += cellH + gap;
+  y += 4;
+  doc.setFont('helvetica','normal'); doc.setFontSize(8.5); doc.setTextColor(...XP.muted);
+  doc.text('Gracias por tu confianza. — Dra. Karen López Venzor', 105, y, {align:'center'});
+}
+
 async function exportarExpediente(pacId) {
   const pac = DB.pacientes.find(p=>p.id===pacId); if(!pac) return;
   toast('⏳ Generando expediente...');
-  const {jsPDF} = window.jspdf; const doc = new jsPDF();
-  // Read checkboxes FIRST before using them
+  const { jsPDF } = window.jspdf; const doc = new jsPDF();
+
   const incHistoria    = document.getElementById('exp-historia')?.checked;
   const incOdontograma = document.getElementById('exp-odontograma')?.checked;
   const incNotas       = document.getElementById('exp-notas')?.checked;
@@ -2413,232 +2999,40 @@ async function exportarExpediente(pacId) {
   const incRuta        = document.getElementById('exp-ruta')?.checked;
   const incPagos       = document.getElementById('exp-pagos')?.checked;
   const incFotos       = document.getElementById('exp-fotos')?.checked;
-  const seccionesActivas = [
-    incHistoria && 'Historia', incOdontograma && 'Odontograma',
-    incNotas && 'Notas', incPresup && 'Presupuesto', incRuta && 'Ruta', incPagos && 'Pagos', incFotos && 'Fotos'
-  ].filter(Boolean);
-  const tituloExp = seccionesActivas.length === 1 ? seccionesActivas[0] : 'Expediente Completo';
-  let y = pdfHeader(doc, tituloExp, pac);
-  let paginasUsadas = 1;
 
-  if(incHistoria) {
-    const h = DB.historia[pacId]||{};
-    if(seccionesActivas[0]!=='Historia'){doc.addPage(); y=pdfHeader(doc,'Historia Clinica',pac);}
-    y = pdfSectionTitle(doc,'DATOS PERSONALES',y);
-    const dpExp = [
-      ['Fecha de nac.',h.fechanac],['Sexo',h.sexo],['Estado civil',h.estadocivil],
-      ['Ocupacion',h.ocupacion],['Direccion',h.direccion],
-      ['Emergencia',h.emergencia],['Parentesco',h.parentesco]
-    ].filter(([,v])=>v);
-    if(dpExp.length){
-      doc.autoTable({startY:y,body:dpExp,styles:{fontSize:9},
-        columnStyles:{0:{fontStyle:'bold',cellWidth:38,textColor:[176,120,152],fillColor:[253,240,248]},1:{textColor:[30,30,30]}},
-        theme:'grid',margin:{left:14,right:14},alternateRowStyles:{fillColor:[255,255,255]}});
-      y=doc.lastAutoTable.finalY+6;
-    }
-    y = pdfSectionTitle(doc,'ANTECEDENTES MEDICOS',y); y+=2;
-    [['Enfermedades',h.enf],['Alergias',h.alergias],['Medicamentos',h.medicamentos],
-     ['Cirugias',h.cirugias],['Motivo',h.motivo],['Ultimo trat.',h.ultimo],
-     ['Habitos',h.habitos],['Observaciones',h.obs]].forEach(([label,val])=>{
-      if(!val) return;
-      if(y>265){doc.addPage();y=pdfHeader(doc,'Historia Clinica',pac);}
-      doc.autoTable({startY:y,body:[[label,val]],styles:{fontSize:9},
-        columnStyles:{0:{fontStyle:'bold',cellWidth:38,textColor:[176,120,152],fillColor:[253,240,248]},1:{textColor:[30,30,30]}},
-        theme:'grid',margin:{left:14,right:14}});
-      y=doc.lastAutoTable.finalY+2;
-    });
-    y+=4;
-  }
+  const fechaStr = xpFechaLarga(new Date());
+  const h = DB.historia[pacId] || {};
+
+  xpPortada(doc, pac, incHistoria ? h : {}, fechaStr);
+
   if(incOdontograma) {
-    const regs=DB.odontograma.filter(r=>r.pacienteId===pacId);
-    if(regs.length){
-      doc.addPage(); y=pdfHeader(doc,'Odontograma',pac); paginasUsadas++;
-      y = pdfSectionTitle(doc,'ODONTOGRAMA',y);
-      doc.autoTable({startY:y,
-        head:[['Diente','Condicion','Superficie','Tratamiento']],
-        body:regs.map(r=>[(condiciones.find(c=>c.key===r.diente)||{diente:r.diente}).diente||r.diente,
-          (condiciones.find(c=>c.key===r.condicion)||{}).label||r.condicion||'—',
-          r.superficie||'—',r.tratamiento||'—']),
-        styles:{fontSize:9},
-        headStyles:{fillColor:[214,168,196]},
-        alternateRowStyles:{fillColor:[253,240,248]},
-        margin:{left:14,right:14}});
-      y=doc.lastAutoTable.finalY+8;
-    }
+    const tipoOdo = pac.odontogramaTipo || 'adulto';
+    const regs = DB.odontograma.filter(r => r.pacienteId === pacId && esDienteDelTipo(r.diente, tipoOdo));
+    xpOdontogramaPage(doc, pac, fechaStr, regs, tipoOdo);
   }
   if(incNotas) {
-    const notas=DB.notas.filter(n=>n.pacienteId===pacId).sort((a,b)=>b.fecha.localeCompare(a.fecha)).slice(0,5);
-    if(notas.length){
-      doc.addPage(); y=pdfHeader(doc,'Notas Clinicas',pac); paginasUsadas++;
-      y = pdfSectionTitle(doc,'NOTAS CLINICAS',y); y+=2;
-      notas.forEach(n=>{
-        if(y>255){doc.addPage();y=pdfHeader(doc,'Notas Clinicas',pac);}
-        doc.setFillColor(253,240,248);
-        doc.rect(14,y,182,7,'F');
-        doc.setFont('helvetica','bold');doc.setFontSize(9);doc.setTextColor(176,120,152);
-        doc.text(`Fecha: ${n.fecha}`,18,y+5);
-        doc.setTextColor(30,30,30); y+=9;
-        doc.setFont('helvetica','normal');doc.setFontSize(9);
-        const lines=doc.splitTextToSize(n.hallazgos||'',178);
-        doc.text(lines,16,y); y+=lines.length*5+5;
-        doc.setDrawColor(201,168,76);doc.setLineWidth(0.3);
-        doc.line(14,y,196,y); y+=4;
-      });
-    }
+    const notas = DB.notas.filter(n => n.pacienteId === pacId).sort((a,b) => (xpParseFecha(b.fecha)||0) - (xpParseFecha(a.fecha)||0));
+    xpNotasPage(doc, pac, fechaStr, notas);
   }
   if(incPresup) {
     const presupSelId = document.getElementById('exp-presup-sel')?.value || 'todos';
     const presups = DB.presupuestos.filter(p => p.pacienteId===pacId && (presupSelId==='todos' || p.id===presupSelId));
-    if(presups.length){
-      doc.addPage(); y = pdfHeader(doc, 'Presupuestos', pac); paginasUsadas++;
-      doc.setTextColor(30,30,30);
-      presups.forEach(pr=>{
-        if(y>245){
-          doc.addPage();
-          doc.setFillColor(214,168,196);doc.rect(0,0,210,10,'F');
-          doc.setTextColor(255,255,255);doc.setFontSize(8);doc.setFont('helvetica','bold');
-          doc.text('Consultorio Dental  |  Dra. Karen Lopez Venzor  |  Presupuestos (continuacion)',105,7,{align:'center'});
-          doc.setTextColor(30,30,30);
-          y=18;
-        }
-        doc.setFont('helvetica','normal');doc.setFontSize(8);doc.setTextColor(100,100,100);
-        doc.text(`Fecha: ${pr.fecha}`,14,y);y+=5;
-        const {subtotal,descItems,descGlobal,descMonto,total,descV,descT}=calcDescuento(pr);
-        const bodyRows = pr.items.map((it,idx)=>{
-          const desc = it.descuento||0;
-          const final = it.costo-(it.costo*desc/100);
-          return [idx+1, it.proc, `$${it.costo.toLocaleString()}`, desc>0?`${desc}%`:'—', desc>0?`$${final.toLocaleString()}`:`$${it.costo.toLocaleString()}`];
-        });
-        const footRows=[];
-        if(descMonto>0){
-          footRows.push(['','','Subtotal','',`$${subtotal.toLocaleString()}`]);
-          if(descItems>0) footRows.push(['','','Desc. por item','',`-$${descItems.toLocaleString()}`]);
-          if(descGlobal>0) footRows.push(['','',descT==='pct'?`Desc. (${descV}%)`:'Desc. fijo','',`-$${descGlobal.toLocaleString()}`]);
-        }
-        footRows.push(['','','Total','',`$${total.toLocaleString()}`]);
-        doc.autoTable({
-          startY:y,
-          head:[['#','Procedimiento','Precio','Desc.','Total']],
-          body:bodyRows,
-          foot:footRows,
-          showFoot:'lastPage', showHead:'everyPage',
-          styles:{fontSize:8},
-          columnStyles:{0:{cellWidth:8,halign:'center'},1:{cellWidth:85},2:{halign:'right',cellWidth:24},3:{halign:'center',cellWidth:14},4:{halign:'right',cellWidth:24}},
-          margin:{left:14,right:14,bottom:30},tableWidth:'auto',
-          headStyles:{fillColor:[214,168,196]},
-          footStyles:{fillColor:[214,168,196],textColor:[255,255,255],fontStyle:'bold'},
-          didDrawPage:(data)=>{ if(data.pageNumber>1){doc.setFillColor(214,168,196);doc.rect(0,0,210,10,'F');doc.setTextColor(255,255,255);doc.setFontSize(8);doc.setFont('helvetica','bold');doc.text('Consultorio Dental  |  Dra. Karen Lopez Venzor  |  Presupuestos (continuacion)',105,7,{align:'center'});doc.setTextColor(30,30,30);}}
-        });
-        y=doc.lastAutoTable.finalY+8;
-      });
-    }
+    xpPresupuestosPage(doc, pac, fechaStr, presups);
   }
-
-  // Fotos desde Cloudinary
   if(incRuta) {
-    const rutaPasos = DB.ruta.filter(r => r.pacienteId === pacId).sort((a,b) => a.paso - b.paso);
-    if(rutaPasos.length) {
-      doc.addPage(); y = pdfHeader(doc, 'Ruta Clinica', pac); paginasUsadas++;
-      y = pdfSectionTitle(doc, 'RUTA CLINICA', y);
-      doc.autoTable({
-        startY: y,
-        head: [['Paso', 'Procedimiento', 'Estatus']],
-        body: rutaPasos.map(p => [p.paso, p.proc, p.status||'Pendiente']),
-        styles: { fontSize: 10 },
-        headStyles: { fillColor: [214,168,196] },
-        alternateRowStyles: { fillColor: [253,240,248] },
-        columnStyles: {
-          0: { halign: 'center', cellWidth: 20, fontStyle: 'bold', textColor: [176,120,152] },
-          2: { halign: 'center', cellWidth: 35 }
-        },
-        margin: { left: 14, right: 14 }
-      });
-      y = doc.lastAutoTable.finalY + 8;
-    }
+    const pasos = DB.ruta.filter(r => r.pacienteId === pacId).sort((a,b) => a.paso - b.paso);
+    xpRutaPage(doc, pac, fechaStr, pasos);
   }
-
   if(incPagos) {
-    const todosPagos = DB.pagos.filter(p => p.pacienteId === pacId);
     const presupsPac = DB.presupuestos.filter(p => p.pacienteId === pacId);
-    // Solo mostrar presupuestos que EXISTEN y tienen pagos
-    const presupIdsConPagos = [...new Set(todosPagos.map(p=>p.presupuestoId).filter(Boolean))]
-      .filter(id => presupsPac.some(p=>p.id===id));
-    if(presupIdsConPagos.length) {
-      doc.addPage(); y = pdfHeader(doc, 'Estado de Cuenta', pac); paginasUsadas++;
-
-      for(const presupId of presupIdsConPagos) {
-        const pr = presupsPac.find(p=>p.id===presupId);
-        const pagosPr = todosPagos.filter(p=>p.presupuestoId===presupId).sort((a,b)=>(b.fecha||'').localeCompare(a.fecha||''));
-        const {total:totalPresup} = calcDescuento(pr);
-        const totalPagado = pagosPr.reduce((s,p)=>s+(p.monto||0),0);
-        const saldo = Math.max(0, totalPresup - totalPagado);
-        if(y > 220) { doc.addPage(); y = pdfHeader(doc,'Estado de Cuenta',pac); }
-        doc.setFont('helvetica','bold');doc.setFontSize(9);doc.setTextColor(176,120,152);
-        doc.text(`Presupuesto: ${pr.fecha}`,14,y);
-        doc.setFont('helvetica','normal');doc.setTextColor(80,80,80);
-        doc.text(`Presupuestado: $${totalPresup.toLocaleString()}   Pagado: $${totalPagado.toLocaleString()}   Saldo pendiente: $${saldo.toLocaleString()}`,14,y+5);
-        y+=12;
-        doc.autoTable({
-          startY:y,
-          head:[['Concepto','Monto','Fecha','Estado']],
-          body:pagosPr.map(p=>[p.concepto||'—','$'+(p.monto||0).toLocaleString(),p.fecha||'—',p.estado||'—']),
-          foot:[['Total pagado','$'+totalPagado.toLocaleString(),'','']],
-          showFoot:'lastPage', showHead:'everyPage',
-          styles:{fontSize:8},
-          headStyles:{fillColor:[214,168,196]},
-          footStyles:{fillColor:[214,168,196],textColor:[255,255,255],fontStyle:'bold'},
-          columnStyles:{1:{halign:'right'},2:{halign:'center'},3:{halign:'center'}},
-          margin:{left:14,right:14,bottom:30},
-          didDrawPage:(data)=>{ if(data.pageNumber>1){doc.setFillColor(214,168,196);doc.rect(0,0,210,10,'F');doc.setTextColor(255,255,255);doc.setFontSize(8);doc.setFont('helvetica','bold');doc.text(`Consultorio Dental  |  Dra. Karen Lopez Venzor  |  Estado de Cuenta (continuacion)`,105,7,{align:'center'});doc.setTextColor(30,30,30);}}
-        });
-        y = doc.lastAutoTable.finalY + 10;
-      }
-    }
+    const pagosPac = DB.pagos.filter(p => p.pacienteId === pacId);
+    xpPagosPage(doc, pac, fechaStr, presupsPac, pagosPac);
+  }
+  if(incFotos) {
+    await xpFotosPage(doc, pac, fechaStr, pacId);
   }
 
-  if(incFotos) try {
-    const fotoDoc = await db.collection('fotos').doc(pacId).get();
-    const fotos = fotoDoc.exists ? (fotoDoc.data().lista || []) : [];
-    if(fotos.length) {
-      doc.setFont('helvetica','bold');doc.setFontSize(11);doc.setTextColor(176,120,152);
-      // Load each image and add to PDF in a 2-column grid
-      const imgW = 85; const imgH = 65; const cols = 2; const marginX = 14; const gap = 10;
-      let col = 0;
-      let fotosHeader = false;
-      for(const f of fotos) {
-        try {
-          const res = await fetch(f.url);
-          const blob = await res.blob();
-          // Use canvas to respect EXIF orientation
-          const correctedB64 = await new Promise(resolve => {
-            const img = new Image();
-            img.onload = () => {
-              const canvas = document.createElement('canvas');
-              canvas.width = img.naturalWidth;
-              canvas.height = img.naturalHeight;
-              const ctx = canvas.getContext('2d');
-              ctx.drawImage(img, 0, 0);
-              resolve(canvas.toDataURL('image/jpeg', 0.85));
-            };
-            img.src = URL.createObjectURL(blob);
-          });
-          if(!fotosHeader) {
-            doc.addPage(); y = pdfHeader(doc, 'Fotografias Clinicas', pac);
-            doc.setFont('helvetica','bold');doc.setFontSize(11);doc.setTextColor(176,120,152);
-            doc.text('Fotografias Clinicas', 14, y); y += 10; doc.setTextColor(30,30,30);
-            fotosHeader = true;
-          }
-          const x = marginX + col * (imgW + gap);
-          if(y + imgH > 255) { doc.addPage(); y = 20; col = 0; }
-          doc.addImage(correctedB64, 'JPEG', x, y, imgW, imgH);
-          col++;
-          if(col >= cols) { col = 0; y += imgH + gap; }
-        } catch(e) { console.warn('Foto no disponible:', f.url); }
-      }
-    }
-  } catch(e) { console.warn('Error cargando fotos:', e); }
-
-  pdfFooter(doc);
+  xpFooter(doc);
   doc.save(`Expediente_${pac.nombre}_${pac.apellido}.pdf`);
   toast('✅ Expediente generado');
 }
