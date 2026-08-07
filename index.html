@@ -2935,13 +2935,20 @@ function xpPresupuestosPage(doc, pac, fechaStr, presups) {
     return;
   }
   presups.forEach(pr => {
-    const { subtotal, descMonto, total } = calcDescuento(pr);
-    const hasDesc = pr.items.some(it => (it.descuento||0) > 0) || descMonto > pr.items.reduce((s,it)=> s+(it.costo*(it.descuento||0)/100),0);
+    const { subtotal, descItems, descGlobal, descMonto, total } = calcDescuento(pr);
+    const hasDesc = descMonto > 0;
+
+    // Precio final por ítem: descuento propio del ítem + parte proporcional del descuento global,
+    // así el desglose por renglón siempre suma exactamente el total del presupuesto.
+    const afterItemDisc = pr.items.map(it => it.costo - it.costo*(it.descuento||0)/100);
+    const sumAfterItemDisc = afterItemDisc.reduce((s,v)=>s+v, 0);
     const head = hasDesc ? ['PROCEDIMIENTO','PRECIO','DESC.','TOTAL'] : ['PROCEDIMIENTO','PRECIO','TOTAL'];
-    const body = pr.items.map(it => {
-      const d = it.descuento||0; const final = it.costo - it.costo*d/100;
+    const body = pr.items.map((it, idx) => {
+      const share = (descGlobal > 0 && sumAfterItemDisc > 0) ? (afterItemDisc[idx]/sumAfterItemDisc)*descGlobal : 0;
+      const final = afterItemDisc[idx] - share;
+      const pct = it.costo > 0 ? Math.round((1 - final/it.costo) * 100) : 0;
       return hasDesc
-        ? [it.proc, `$${it.costo.toLocaleString()}`, d>0?`${d}%`:'—', `$${final.toLocaleString()}`]
+        ? [it.proc, `$${it.costo.toLocaleString()}`, pct>0?`${pct}%`:'—', `$${Math.round(final).toLocaleString()}`]
         : [it.proc, `$${it.costo.toLocaleString()}`, `$${it.costo.toLocaleString()}`];
     });
     const tagLabel = `$${total.toLocaleString()}`;
@@ -2968,9 +2975,10 @@ function xpPresupuestosPage(doc, pac, fechaStr, presups) {
     });
     y = doc.lastAutoTable.finalY + 4;
 
-    const parts = descMonto > 0
-      ? [{label:`Total $${total.toLocaleString()}`,bold:true}, {label:`Desc. -$${descMonto.toLocaleString()}`}, {label:`Subtotal $${subtotal.toLocaleString()}`}]
-      : [{label:`Total $${total.toLocaleString()}`,bold:true}];
+    const parts = [{label:`Total $${total.toLocaleString()}`,bold:true}];
+    if(descGlobal > 0) parts.push({label:`Desc. ${pr.descTipo==='pct' ? (parseFloat(pr.descValor)||0)+'%' : 'fijo'} -$${Math.round(descGlobal).toLocaleString()}`});
+    if(descItems > 0) parts.push({label:`Desc. por ítem -$${Math.round(descItems).toLocaleString()}`});
+    if(descMonto > 0) parts.push({label:`Subtotal $${subtotal.toLocaleString()}`});
     let sx = 196;
     parts.forEach(p => {
       doc.setFont('helvetica', p.bold?'bold':'normal'); doc.setFontSize(p.bold?8.5:7.8);
@@ -3011,6 +3019,19 @@ function xpRutaPage(doc, pac, fechaStr, pasos) {
   });
 }
 
+function xpPagosTabla(doc, y, pagos) {
+  doc.autoTable({
+    startY: y,
+    head: [['FECHA','CONCEPTO','MONTO']],
+    body: pagos.map(p => [xpFechaCorta(p.fecha), p.concepto||'—', `$${(p.monto||0).toLocaleString()}`]),
+    theme: 'plain',
+    styles: { fontSize: 8, textColor: XP.heading, cellPadding:{top:2.2,bottom:2.2,left:2,right:2}, lineWidth:{top:0,left:0,right:0,bottom:0.15}, lineColor: XP.tableLine },
+    headStyles: { textColor: XP.tableHead, fontStyle:'bold', fontSize:6.6, lineWidth:{top:0,left:0,right:0,bottom:0.3}, lineColor: XP.tableLine },
+    columnStyles: { 2: { halign:'right', fontStyle:'bold', cellWidth: 28 } },
+    margin: { left: 14, right: 14, bottom: 32 }
+  });
+  return doc.lastAutoTable.finalY;
+}
 function xpPagosPage(doc, pac, fechaStr, presupsPac, pagosPac) {
   let y = xpNewSectionPage(doc, 'Pagos', pac, fechaStr) + 8;
   const totalPresupuestado = presupsPac.reduce((s,pr) => s + calcDescuento(pr).total, 0);
@@ -3031,53 +3052,46 @@ function xpPagosPage(doc, pac, fechaStr, presupsPac, pagosPac) {
     doc.setFont('helvetica','normal'); doc.setFontSize(7); doc.setTextColor(...XP.muted);
     doc.text(label, cx, y+16.5, {align:'center'});
   });
-  y += 30;
+  y += 32;
 
-  if(presupsPac.length) {
-    const colW2 = (182-6)/2;
-    presupsPac.forEach((pr, i) => {
-      const col = i % 2, row = Math.floor(i/2);
-      const x = 14 + col*(colW2+6);
-      const yy = y + row*22;
-      if(yy + 18 > 260) return;
-      const pagosPr = pagosPac.filter(p => p.presupuestoId === pr.id);
-      const { total } = calcDescuento(pr);
-      const pagado = pagosPr.reduce((s,p) => s+(p.monto||0), 0);
-      const saldoPr = Math.max(0, total-pagado);
-      xpCard(doc, x, yy, colW2, 18);
-      doc.setFont('helvetica','bold'); doc.setFontSize(8); doc.setTextColor(...XP.label);
-      doc.text(`Presupuesto ${i+1} · ${pr.fecha}`, x+4, yy+6.5);
-      doc.setFont('helvetica','normal'); doc.setFontSize(7.6); doc.setTextColor(...XP.heading);
-      doc.text(`Presupuestado $${total.toLocaleString()} · Pagado $${pagado.toLocaleString()} · Saldo $${saldoPr.toLocaleString()}`, x+4, yy+12.5);
-    });
-    y += Math.ceil(presupsPac.length/2)*22 + 8;
-  }
-
-  doc.setFont('helvetica','bold'); doc.setFontSize(9.5); doc.setTextColor(...XP.heading);
-  doc.text('Historial de pagos', 14, y);
-  y += 5;
-
-  const historial = pagosPac.slice().sort((a,b) => (xpParseFecha(b.fecha)||0) - (xpParseFecha(a.fecha)||0));
-  if(historial.length) {
-    doc.autoTable({
-      startY: y,
-      head: [['FECHA','CONCEPTO','PRESUPUESTO','MONTO']],
-      body: historial.map(p => {
-        const pr = presupsPac.find(x => x.id === p.presupuestoId);
-        return [xpFechaCorta(p.fecha), p.concepto||'—', pr ? pr.fecha : '—', `$${(p.monto||0).toLocaleString()}`];
-      }),
-      theme: 'plain',
-      styles: { fontSize: 8.3, textColor: XP.heading, cellPadding:{top:2.4,bottom:2.4,left:2,right:2}, lineWidth:{top:0,left:0,right:0,bottom:0.15}, lineColor: XP.tableLine },
-      headStyles: { textColor: XP.tableHead, fontStyle:'bold', fontSize:6.8, lineWidth:{top:0,left:0,right:0,bottom:0.3}, lineColor: XP.tableLine },
-      columnStyles: { 3: { halign:'right', fontStyle:'bold' } },
-      margin: { left: 14, right: 14, bottom: 32 }
-    });
-    y = doc.lastAutoTable.finalY + 6;
-  } else {
+  if(!presupsPac.length && !pagosPac.length) {
     doc.setFont('helvetica','normal'); doc.setFontSize(9); doc.setTextColor(...XP.muted);
-    doc.text('Sin pagos registrados.', 14, y+4);
-    y += 10;
+    doc.text('Sin pagos registrados.', 14, y);
+    return;
   }
+
+  presupsPac.forEach((pr, i) => {
+    const pagosPr = pagosPac.filter(p => p.presupuestoId === pr.id).slice().sort((a,b) => (xpParseFecha(b.fecha)||0) - (xpParseFecha(a.fecha)||0));
+    const { total } = calcDescuento(pr);
+    const pagado = pagosPr.reduce((s,p) => s+(p.monto||0), 0);
+    const saldoPr = Math.max(0, total-pagado);
+
+    if(y > 250) y = xpNewSectionPage(doc, 'Pagos', pac, fechaStr) + 8;
+
+    doc.setFont('helvetica','bold'); doc.setFontSize(9.5); doc.setTextColor(...XP.heading);
+    doc.text(`Presupuesto ${i+1} · ${xpFechaLarga(pr.fecha)}`, 14, y+4);
+    doc.setFont('helvetica','normal'); doc.setFontSize(7.8); doc.setTextColor(...XP.muted);
+    doc.text(`Presupuestado $${total.toLocaleString()} · Pagado $${pagado.toLocaleString()} · Saldo $${saldoPr.toLocaleString()}`, 14, y+9.5);
+    y += 14;
+
+    if(pagosPr.length) {
+      y = xpPagosTabla(doc, y, pagosPr) + 10;
+    } else {
+      doc.setFont('helvetica','normal'); doc.setFontSize(8); doc.setTextColor(...XP.muted);
+      doc.text('Sin pagos registrados para este presupuesto.', 14, y+2);
+      y += 12;
+    }
+  });
+
+  const sinPresup = pagosPac.filter(p => !p.presupuestoId).slice().sort((a,b) => (xpParseFecha(b.fecha)||0) - (xpParseFecha(a.fecha)||0));
+  if(sinPresup.length) {
+    if(y > 250) y = xpNewSectionPage(doc, 'Pagos', pac, fechaStr) + 8;
+    doc.setFont('helvetica','bold'); doc.setFontSize(9.5); doc.setTextColor(...XP.heading);
+    doc.text('Otros pagos', 14, y+4);
+    y += 9;
+    y = xpPagosTabla(doc, y, sinPresup) + 10;
+  }
+
   doc.setFont('helvetica','bold'); doc.setFontSize(8.6); doc.setTextColor(...XP.heading);
   doc.text(`Total pagado a la fecha · $${totalPagado.toLocaleString()}`, 196, y, {align:'right'});
 }
