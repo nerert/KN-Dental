@@ -2071,6 +2071,11 @@ async function cargarFotos() {
   if(!archivosGrid) return;
   archivosGrid.innerHTML = '<p style="color:var(--ink2);padding:8px 0">⏳ Cargando fotos…</p>';
   try {
+    let listaCloud = [];
+    try {
+      const fotoDoc = await db.collection('fotos').doc(pacId).get();
+      listaCloud = fotoDoc.exists ? (fotoDoc.data().lista || []).map(f=>({...f, _src:'cloud'})) : [];
+    } catch(e) { console.warn('Error cargando fotos legacy (Cloudinary):', e); }
     const doc = await db.collection('archivos').doc(pacId).get();
     const arData = doc.exists ? doc.data() : {};
     const listaFirebase = (arData.fotos || []).map(f=>({...f, _src:'firebase'}));
@@ -2087,15 +2092,16 @@ async function cargarFotos() {
       ...drivePacFiles.filter(f=>!firebaseIds.has(f.id)).map(f=>({driveId:f.id, name:f.name, _src:'drive'})),
       ...driveOrtoFiles.filter(f=>!firebaseIds.has(f.id)).map(f=>({driveId:f.id, name:f.name, _src:'orto'}))
     ];
-    _fotosActuales = [...listaFirebase, ...driveExtras];
+    _fotosActuales = [...listaCloud, ...listaFirebase, ...driveExtras];
     if(!_fotosActuales.length) {
       archivosGrid.innerHTML = '<p style="color:var(--ink2);padding:8px 0">Sin fotos para este paciente.</p>';
       return;
     }
     archivosGrid.innerHTML = '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px;margin-bottom:16px">'
       + _fotosActuales.map((f, i) => {
-          const thumb = `<img src="https://drive.google.com/thumbnail?id=${f.driveId}&sz=w300" loading="lazy" style="width:100%;aspect-ratio:1;object-fit:cover;border-radius:8px 8px 0 0;display:block;cursor:pointer" onclick="abrirVisor(${i})">`;
-          const srcBadge = f._src!=='firebase' ? `<span title="${f._src==='orto'?'Ortodoncia':'Drive'}" style="position:absolute;top:4px;left:4px;background:rgba(0,0,0,.45);color:#fff;border-radius:10px;padding:2px 5px;font-size:.65rem">${f._src==='orto'?'🦷':'📁'}</span>` : '';
+          const thumbSrc = f.driveId ? `https://drive.google.com/thumbnail?id=${f.driveId}&sz=w300` : f.url;
+          const thumb = `<img src="${thumbSrc}" loading="lazy" style="width:100%;aspect-ratio:1;object-fit:cover;border-radius:8px 8px 0 0;display:block;cursor:pointer" onclick="abrirVisor(${i})">`;
+          const srcBadge = f._src!=='firebase' ? `<span title="${f._src==='orto'?'Ortodoncia':f._src==='cloud'?'Archivo antiguo':'Drive'}" style="position:absolute;top:4px;left:4px;background:rgba(0,0,0,.45);color:#fff;border-radius:10px;padding:2px 5px;font-size:.65rem">${f._src==='orto'?'🦷':f._src==='cloud'?'☁️':'📁'}</span>` : '';
           const badge = `<div style="position:absolute;top:4px;right:4px;display:flex;gap:3px">
                 <button onclick="editarFotoDesdeGaleria(${i})" title="Editar" style="background:rgba(0,0,0,.45);color:#fff;border:none;border-radius:50%;width:26px;height:26px;cursor:pointer;font-size:.75rem;line-height:1">✏️</button>
                 ${f._src==='firebase' ? `<button onclick="editarNotaFoto('${pacId}','${f.driveId}')" title="Nota" style="background:rgba(0,0,0,.45);color:#fff;border:none;border-radius:50%;width:26px;height:26px;cursor:pointer;font-size:.75rem;line-height:1">📝</button>
@@ -2332,7 +2338,7 @@ function _renderVisor() {
   const img = document.getElementById('visor-img');
   const cnt = document.getElementById('visor-counter');
   if(img) {
-    img.src = `https://drive.google.com/thumbnail?id=${f.driveId}&sz=w1600`;
+    img.src = f.driveId ? `https://drive.google.com/thumbnail?id=${f.driveId}&sz=w1600` : f.url;
     img.style.display = '';
   }
   if(cnt) cnt.textContent = `${_visorIdx + 1} / ${_fotosActuales.length}`;
@@ -3233,14 +3239,28 @@ function xpPagosPage(doc, pac, fechaStr, presupsPac, pagosPac) {
   doc.text(`Total pagado a la fecha · $${totalPagado.toLocaleString()}`, 196, y, {align:'right'});
 }
 
-function xpFotoPlaceholder(doc, x, y, w, h) {
+function xpFotoPlaceholder(doc, x, y, w, h, motivo) {
   doc.setFillColor(248,244,250); doc.setDrawColor(...XP.cardBorder); doc.setLineWidth(0.25);
   doc.roundedRect(x, y, w, h, 2.5, 2.5, 'FD');
-  doc.setFont('helvetica','normal'); doc.setFontSize(7); doc.setTextColor(...XP.muted);
-  doc.text('Sin fotografía', x+w/2, y+h/2+1.2, {align:'center'});
+  if(motivo) {
+    doc.setFont('helvetica','bold'); doc.setFontSize(6.3); doc.setTextColor(...XP.muted);
+    doc.text('⚠️ No se pudo cargar', x+w/2, y+7, {align:'center'});
+    doc.setFont('helvetica','normal'); doc.setFontSize(5.6);
+    const lineas = doc.splitTextToSize(String(motivo), w-6).slice(0,4);
+    lineas.forEach((linea, i) => doc.text(linea, x+w/2, y+12+i*4, {align:'center'}));
+  } else {
+    doc.setFont('helvetica','normal'); doc.setFontSize(7); doc.setTextColor(...XP.muted);
+    doc.text('Sin fotografía', x+w/2, y+h/2+1.2, {align:'center'});
+  }
 }
 async function xpFotoCloudDataUrl(f) {
-  const res = await fetch(f.url);
+  let res;
+  try {
+    res = await fetch(f.url);
+  } catch(e) {
+    throw new Error('Sin conexión con Cloudinary: ' + e.message);
+  }
+  if(!res.ok) throw new Error('Cloudinary respondió ' + res.status);
   const blob = await res.blob();
   const b64 = await new Promise((resolve, reject) => {
     const img = new Image();
@@ -3250,16 +3270,25 @@ async function xpFotoCloudDataUrl(f) {
       canvas.getContext('2d').drawImage(img,0,0);
       resolve(canvas.toDataURL('image/jpeg', 0.85));
     };
-    img.onerror = reject;
+    img.onerror = () => reject(new Error('No se pudo decodificar la imagen'));
     img.src = URL.createObjectURL(blob);
   });
   return { dataUrl: b64, fmt: 'JPEG' };
 }
 async function xpFotoDriveDataUrl(f) {
-  const resp = await fetch(`/.netlify/functions/gcal?action=drive-image&fileId=${f.driveId}`);
-  if(!resp.ok) throw new Error(resp.statusText);
+  let resp;
+  try {
+    resp = await fetch(`/.netlify/functions/gcal?action=drive-image&fileId=${f.driveId}`);
+  } catch(e) {
+    throw new Error('Sin conexión con el servidor: ' + e.message);
+  }
+  if(!resp.ok) {
+    let detalle = resp.statusText;
+    try { const body = await resp.json(); if(body?.error) detalle = body.error; } catch(e) {}
+    throw new Error('Drive respondió ' + resp.status + ': ' + detalle);
+  }
   const { base64, mimeType } = await resp.json();
-  if(!base64) throw new Error('Sin datos de imagen');
+  if(!base64) throw new Error('Drive no devolvió datos de imagen');
   const fmt = mimeType?.includes('png') ? 'PNG' : 'JPEG';
   return { dataUrl: `data:${mimeType};base64,${base64}`, fmt };
 }
@@ -3301,7 +3330,10 @@ async function xpFotosPage(doc, pac, fechaStr, pacId) {
         doc.addImage(dataUrl, fmt, x, y, cellW, cellH);
         doc.setDrawColor(...XP.cardBorder); doc.setLineWidth(0.25);
         doc.roundedRect(x, y, cellW, cellH, 2.5, 2.5, 'S');
-      } catch(e) { xpFotoPlaceholder(doc, x, y, cellW, cellH); }
+      } catch(e) {
+        console.warn('[xpFotosPage] no se pudo cargar foto', f, e);
+        xpFotoPlaceholder(doc, x, y, cellW, cellH, e?.message || 'Error desconocido');
+      }
     } else {
       xpFotoPlaceholder(doc, x, y, cellW, cellH);
     }
