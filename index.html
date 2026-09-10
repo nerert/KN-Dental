@@ -1194,7 +1194,7 @@ function pacTienePagoPendiente(p) {
   const presups = DB.presupuestos.filter(pr => pr.pacienteId === p.id);
   return presups.some(pr => {
     const { total } = calcDescuento(pr);
-    const pagado = DB.pagos.filter(pg => pg.presupuestoId === pr.id).reduce((s,pg)=>s+(pg.monto||0),0);
+    const pagado = DB.pagos.filter(pg => pg.presupuestoId === pr.id).reduce((s,pg)=>s+(+pg.monto||0),0);
     return total - pagado > 0;
   });
 }
@@ -1655,7 +1655,7 @@ function cargarPresupuestos() {
   if(!lista.length) { div.innerHTML='<div class="card"><p style="color:var(--ink2)">Sin presupuestos para este paciente</p></div>'; return; }
   div.innerHTML = lista.map(pr => {
     const {subtotal, descItems, descGlobal, descMonto, total, descV, descT} = calcDescuento(pr);
-    const pagado = DB.pagos.filter(p=>p.presupuestoId===pr.id).reduce((s,p)=>s+(p.monto||0),0);
+    const pagado = DB.pagos.filter(p=>p.presupuestoId===pr.id).reduce((s,p)=>s+(+p.monto||0),0);
     const saldoPr = Math.max(0, total - pagado);
     const estadoBadge = (total > 0 && pagado >= total)
       ? '<span style="background:#dcfce7;color:#16a34a;border-radius:20px;padding:3px 10px;font-size:.75rem;font-weight:700">✅ Pagado</span>'
@@ -2367,7 +2367,7 @@ function renderPagos() {
   // Resumen
   const resumen = document.getElementById('pagos-resumen');
   if(resumen) resumen.style.display = pacId ? 'block' : 'none';
-  const totalPagado = pagos.reduce((s,p) => s + (p.monto||0), 0);
+  const totalPagado = pagos.reduce((s,p) => s + (+p.monto||0), 0);
   // Populate presupuesto selector
   const presups = DB.presupuestos.filter(p => p.pacienteId === pacId);
   const selPresup = document.getElementById('pagos-presup-sel');
@@ -2417,7 +2417,7 @@ function actualizarResumenPagos() {
   const totalPresup = pr ? calcDescuento(pr).total : 0;
   // Only count pagos linked to this presupuesto
   const pagos = DB.pagos.filter(p => p.pacienteId === pacId && p.presupuestoId === presupId);
-  const totalPagado = pagos.reduce((s,p) => s + (p.monto||0), 0);
+  const totalPagado = pagos.reduce((s,p) => s + (+p.monto||0), 0);
   const saldo = Math.max(0, totalPresup - totalPagado);
   const elPresup = document.getElementById('pagos-total-presup');
   const elPagado = document.getElementById('pagos-total-pagado');
@@ -3178,7 +3178,10 @@ function xpPagosTabla(doc, y, pagos) {
 function xpPagosPage(doc, pac, fechaStr, presupsPac, pagosPac) {
   let y = xpNewSectionPage(doc, 'Pagos', pac, fechaStr) + 8;
   const totalPresupuestado = presupsPac.reduce((s,pr) => s + calcDescuento(pr).total, 0);
-  const totalPagado = pagosPac.reduce((s,p) => s + (p.monto||0), 0);
+  // Solo contar pagos que se muestran en el desglose (ligados a presupuestos existentes u orphanos)
+  const presupIds = new Set(presupsPac.map(pr => pr.id));
+  const pagosVisibles = pagosPac.filter(p => !p.presupuestoId || presupIds.has(p.presupuestoId));
+  const totalPagado = pagosVisibles.reduce((s,p) => s + (+p.monto||0), 0);
   const saldo = Math.max(0, totalPresupuestado - totalPagado);
 
   xpCard(doc, 14, y, 182, 22, { fill: XP.band, border: [243,217,234] });
@@ -3206,7 +3209,7 @@ function xpPagosPage(doc, pac, fechaStr, presupsPac, pagosPac) {
   presupsPac.forEach((pr, i) => {
     const pagosPr = pagosPac.filter(p => p.presupuestoId === pr.id).slice().sort((a,b) => (xpParseFecha(b.fecha)||0) - (xpParseFecha(a.fecha)||0));
     const { total } = calcDescuento(pr);
-    const pagado = pagosPr.reduce((s,p) => s+(p.monto||0), 0);
+    const pagado = pagosPr.reduce((s,p) => s+(+p.monto||0), 0);
     const saldoPr = Math.max(0, total-pagado);
 
     if(y > 250) y = xpNewSectionPage(doc, 'Pagos', pac, fechaStr) + 8;
