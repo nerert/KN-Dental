@@ -3178,7 +3178,10 @@ function xpPagosTabla(doc, y, pagos) {
 function xpPagosPage(doc, pac, fechaStr, presupsPac, pagosPac) {
   let y = xpNewSectionPage(doc, 'Pagos', pac, fechaStr) + 8;
   const totalPresupuestado = presupsPac.reduce((s,pr) => s + calcDescuento(pr).total, 0);
-  const totalPagado = pagosPac.reduce((s,p) => s + (+p.monto||0), 0);
+  // Solo contar pagos que se muestran en el desglose (ligados a presupuestos existentes u orphanos)
+  const presupIds = new Set(presupsPac.map(pr => pr.id));
+  const pagosVisibles = pagosPac.filter(p => !p.presupuestoId || presupIds.has(p.presupuestoId));
+  const totalPagado = pagosVisibles.reduce((s,p) => s + (+p.monto||0), 0);
   const saldo = Math.max(0, totalPresupuestado - totalPagado);
 
   xpCard(doc, 14, y, 182, 22, { fill: XP.band, border: [243,217,234] });
