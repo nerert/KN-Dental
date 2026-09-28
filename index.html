@@ -28,6 +28,7 @@
 :root {
   --accent:#d6a8c4; --accent2:#c090b8; --accent-light:#fdf0f8; --accent-hover:#b07898;
   --bg:#f8f7fc; --surface:#fff; --surface2:#f3f0fb; --border:#e5e0f8;
+  --sidebar-border:#f0d5e6;
   --ink:#1a1523; --ink2:#6b5fa0; --warn:#dc2626; --warn-light:#fee2e2;
   --badge-green-bg:#ede9fe; --badge-green-color:#5b21b6;
   --caries:#e07a5f; --obturado:#3a86ff; --ausente:#9ca3af; --fractura:#c9a84c;
@@ -35,8 +36,8 @@
 }
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--ink);display:flex;min-height:100vh}
-.sidebar{width:220px;min-height:100vh;background:#fdf0f8;border-right:1px solid #f0d5e6;display:flex;flex-direction:column;position:fixed;top:0;left:0;bottom:0;z-index:100;overflow-y:auto}
-.sidebar-logo{padding:20px 16px 12px;border-bottom:1px solid #f0d5e6}
+.sidebar{width:220px;min-height:100vh;background:var(--accent-light);border-right:1px solid var(--sidebar-border);display:flex;flex-direction:column;position:fixed;top:0;left:0;bottom:0;z-index:100;overflow-y:auto}
+.sidebar-logo{padding:20px 16px 12px;border-bottom:1px solid var(--sidebar-border)}
 .sidebar-logo h1{font-family:'Fraunces',serif;font-size:1.4rem;color:var(--accent)}
 .sidebar-logo p{font-size:0.72rem;color:var(--ink2);margin-top:2px}
 .nav-item{display:flex;align-items:center;gap:10px;padding:10px 16px;cursor:pointer;font-size:0.88rem;font-weight:500;color:var(--ink2);border-radius:8px;margin:2px 8px;transition:all .15s}
@@ -211,7 +212,7 @@ th{font-weight:700;color:var(--ink2);font-size:0.78rem;text-transform:uppercase;
   <div class="nav-item" onclick="showPage('catalogo')"><span class="nav-icon">🏷️</span> Catálogo</div>
   <div class="nav-item" onclick="showPage('respaldo')"><span class="nav-icon">⚙️</span> Configuración</div>
   <div style="flex:1"></div>
-  <div style="padding:10px 8px;border-top:1px solid #f0d5e6">
+  <div style="padding:10px 8px;border-top:1px solid var(--sidebar-border)">
     <div id="sidebar-paciente" style="display:none;align-items:center;gap:8px;padding:7px 10px;border-radius:8px;background:var(--accent-light);margin-bottom:6px;font-size:.78rem;color:var(--accent);font-weight:600;cursor:pointer" onclick="if(pacienteActivo)irAPaciente(pacienteActivo)" title="Ver historia clínica">
       <span id="sidebar-pac-avatar" class="sidebar-pac-avatar"></span><span id="sidebar-pac-nombre" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1"></span>
     </div>
@@ -961,12 +962,20 @@ function loadConfig() {
 }
 
 const _PALETAS = {
-  rosa:    {accent:'#d6a8c4',accent2:'#c090b8',hover:'#b07898',light:'#fdf0f8',bg:'#f8f7fc',surface2:'#f3f0fb',border:'#e5e0f8',ink2:'#6b5fa0'},
-  morado:  {accent:'#9b8bc4',accent2:'#8070b0',hover:'#695a9e',light:'#f2eefb',bg:'#f5f4fc',surface2:'#ece8f8',border:'#dad4f4',ink2:'#50409e'},
-  azul:    {accent:'#7bafd4',accent2:'#5e96c0',hover:'#4a7daa',light:'#eef5fb',bg:'#f5f7fc',surface2:'#e8f1f8',border:'#d0e3f0',ink2:'#375e8a'},
-  teal:    {accent:'#5fb8c0',accent2:'#449ea8',hover:'#308590',light:'#ecf8f9',bg:'#f4f9fa',surface2:'#e2f3f5',border:'#c5e8ec',ink2:'#206068'},
-  verde:   {accent:'#7ab89e',accent2:'#5fa085',hover:'#4a8970',light:'#edf8f3',bg:'#f5f9f7',surface2:'#e5f4ec',border:'#cce6d7',ink2:'#2d6b50'},
-  naranja: {accent:'#d4956a',accent2:'#be7c50',hover:'#a86538',light:'#fdf4ed',bg:'#faf7f5',surface2:'#f5ece3',border:'#eed9c8',ink2:'#8a4e28'}
+  rosa:    {accent:'#d6a8c4',accent2:'#c090b8',hover:'#b07898',light:'#fdf0f8',bg:'#f8f7fc',surface2:'#f3f0fb',border:'#e5e0f8',ink2:'#6b5fa0',sidebarBorder:'#f0d5e6'},
+  morado:  {accent:'#9b8bc4',accent2:'#8070b0',hover:'#695a9e',light:'#f2eefb',bg:'#f5f4fc',surface2:'#ece8f8',border:'#dad4f4',ink2:'#50409e',sidebarBorder:'#e0d8f2'},
+  azul:    {accent:'#7bafd4',accent2:'#5e96c0',hover:'#4a7daa',light:'#eef5fb',bg:'#f5f7fc',surface2:'#e8f1f8',border:'#d0e3f0',ink2:'#375e8a',sidebarBorder:'#d5e8f2'},
+  teal:    {accent:'#5fb8c0',accent2:'#449ea8',hover:'#308590',light:'#ecf8f9',bg:'#f4f9fa',surface2:'#e2f3f5',border:'#c5e8ec',ink2:'#206068',sidebarBorder:'#c8e8ec'},
+  verde:   {accent:'#7ab89e',accent2:'#5fa085',hover:'#4a8970',light:'#edf8f3',bg:'#f5f9f7',surface2:'#e5f4ec',border:'#cce6d7',ink2:'#2d6b50',sidebarBorder:'#c5e5d8'},
+  naranja: {accent:'#d4956a',accent2:'#be7c50',hover:'#a86538',light:'#fdf4ed',bg:'#faf7f5',surface2:'#f5ece3',border:'#eed9c8',ink2:'#8a4e28',sidebarBorder:'#efd5b8'}
+};
+const _PALETAS_XP = {
+  rosa:    {band:[253,240,248],bandBorder:[214,168,196],eyebrow:[192,144,184],label:[122,47,86], pendingBg:[238,227,240],pendingText:[138,85,112]},
+  morado:  {band:[242,238,251],bandBorder:[155,139,196],eyebrow:[128,112,176],label:[80,64,158],pendingBg:[235,230,248],pendingText:[80,64,158]},
+  azul:    {band:[238,245,251],bandBorder:[123,175,212],eyebrow:[94,150,192], label:[55,94,138], pendingBg:[230,242,250],pendingText:[55,94,138]},
+  teal:    {band:[236,248,249],bandBorder:[95,184,192], eyebrow:[68,158,168], label:[32,96,104], pendingBg:[220,244,246],pendingText:[32,96,104]},
+  verde:   {band:[237,248,243],bandBorder:[122,184,158],eyebrow:[95,160,133], label:[45,107,80], pendingBg:[225,245,235],pendingText:[45,107,80]},
+  naranja: {band:[253,244,237],bandBorder:[212,149,106],eyebrow:[190,124,80], label:[138,78,40], pendingBg:[250,235,220],pendingText:[138,78,40]}
 };
 let _selectedPaleta = 'rosa';
 
@@ -983,6 +992,9 @@ function seleccionarPaleta(nombre) {
   r.setProperty('--surface2', pal.surface2);
   r.setProperty('--border', pal.border);
   r.setProperty('--ink2', pal.ink2);
+  r.setProperty('--sidebar-border', pal.sidebarBorder);
+  const xpc = _PALETAS_XP[nombre];
+  if(xpc) { XP.band=xpc.band; XP.bandBorder=xpc.bandBorder; XP.eyebrow=xpc.eyebrow; XP.label=xpc.label; XP.pendingBg=xpc.pendingBg; XP.pendingText=xpc.pendingText; }
   document.querySelectorAll('#cfg-paletas [data-paleta]').forEach(b => {
     const active = b.dataset.paleta === nombre;
     b.style.border = active ? '3px solid #333' : '3px solid transparent';
@@ -2824,7 +2836,7 @@ function xpDienteEsDelModo(diente, modo) {
   return t.sup.includes(n) || t.inf.includes(n);
 }
 
-const XP = {
+let XP = {
   pageW: 210, pageH: 297,
   band: [253,240,248], bandBorder: [214,168,196],
   heading: [64,50,90], muted: [122,106,148], label: [122,47,86],
