@@ -879,7 +879,8 @@ const firebaseConfig = {
 };
 const fbApp   = firebase.initializeApp(firebaseConfig);
 const db      = firebase.firestore();
-const fbStore = firebase.storage();
+let fbStore = null;
+try { fbStore = firebase.storage(); } catch(e) { console.warn('Firebase Storage no disponible:', e); }
 
 // ── AUTH ───────────────────────────────────────────────────────────────────
 firebase.auth().onAuthStateChanged(user => {
@@ -1638,6 +1639,7 @@ async function guardarHistoria() {
 
 // ── FOTOS NOTAS (Firebase Storage) ────────────────────────────────────────────
 async function storageGetFotoUrls(notaId) {
+  if(!fbStore) return [];
   try {
     const list = await fbStore.ref(`notas_fotos/${notaId}`).listAll();
     if(!list.items.length) return [];
@@ -1657,6 +1659,7 @@ async function storageUrlToDataUrl(url) {
   } catch(e) { return null; }
 }
 async function storageSetFotos(notaId, fotosBase64) {
+  if(!fbStore) return;
   try {
     const list = await fbStore.ref(`notas_fotos/${notaId}`).listAll();
     await Promise.all(list.items.map(item => item.delete().catch(()=>{})));
@@ -1667,6 +1670,7 @@ async function storageSetFotos(notaId, fotosBase64) {
   }
 }
 async function storageDelFotos(notaId) {
+  if(!fbStore) return;
   try {
     const list = await fbStore.ref(`notas_fotos/${notaId}`).listAll();
     await Promise.all(list.items.map(item => item.delete().catch(()=>{})));
