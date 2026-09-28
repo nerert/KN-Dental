@@ -21,6 +21,7 @@
 <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-storage-compat.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
@@ -876,8 +877,9 @@ const firebaseConfig = {
   messagingSenderId: "842082089480",
   appId: "1:842082089480:web:449dbb696f5c798fb8efbd"
 };
-const fbApp = firebase.initializeApp(firebaseConfig);
-const db    = firebase.firestore();
+const fbApp   = firebase.initializeApp(firebaseConfig);
+const db      = firebase.firestore();
+const fbStore = firebase.storage();
 
 // ── AUTH ───────────────────────────────────────────────────────────────────
 firebase.auth().onAuthStateChanged(user => {
@@ -1634,45 +1636,49 @@ async function guardarHistoria() {
   toast(ok ? '✅ Historia guardada' : '❌ Error al guardar');
 }
 
-// ── FOTOS NOTAS (IndexedDB — no se guardan en Firestore) ─────────────────────
-const _IDB_NAME = 'kndFotos', _IDB_VER = 1, _IDB_STORE = 'notaFotos';
-let _idb = null;
-function idbOpen() {
-  if(_idb) return Promise.resolve(_idb);
-  return new Promise((res, rej) => {
-    const req = indexedDB.open(_IDB_NAME, _IDB_VER);
-    req.onupgradeneeded = e => e.target.result.createObjectStore(_IDB_STORE, {keyPath:'notaId'});
-    req.onsuccess = e => { _idb = e.target.result; res(_idb); };
-    req.onerror = () => rej(req.error);
-  });
-}
-async function idbGetFotos(notaId) {
+// ── FOTOS NOTAS (Firebase Storage) ────────────────────────────────────────────
+async function storageGetFotoUrls(notaId) {
   try {
-    const db = await idbOpen();
-    return await new Promise(res => {
-      const req = db.transaction(_IDB_STORE,'readonly').objectStore(_IDB_STORE).get(notaId);
-      req.onsuccess = () => res(req.result?.fotos || []);
-      req.onerror = () => res([]);
-    });
+    const list = await fbStore.ref(`notas_fotos/${notaId}`).listAll();
+    if(!list.items.length) return [];
+    const sorted = list.items.sort((a,b) => a.name.localeCompare(b.name, undefined, {numeric:true}));
+    return await Promise.all(sorted.map(item => item.getDownloadURL()));
   } catch(e) { return []; }
 }
-async function idbSetFotos(notaId, fotos) {
+async function storageUrlToDataUrl(url) {
   try {
-    const db = await idbOpen();
-    await new Promise((res, rej) => {
-      const req = db.transaction(_IDB_STORE,'readwrite').objectStore(_IDB_STORE).put({notaId, fotos});
-      req.onsuccess = res; req.onerror = rej;
+    const resp = await fetch(url);
+    const blob = await resp.blob();
+    return new Promise(res => {
+      const reader = new FileReader();
+      reader.onload = e => res(e.target.result);
+      reader.readAsDataURL(blob);
     });
+  } catch(e) { return null; }
+}
+async function storageSetFotos(notaId, fotosBase64) {
+  try {
+    const list = await fbStore.ref(`notas_fotos/${notaId}`).listAll();
+    await Promise.all(list.items.map(item => item.delete().catch(()=>{})));
+  } catch(e) {}
+  for(let i = 0; i < fotosBase64.length; i++) {
+    const ref = fbStore.ref(`notas_fotos/${notaId}/${i}.jpg`);
+    await ref.putString(fotosBase64[i], 'data_url');
+  }
+}
+async function storageDelFotos(notaId) {
+  try {
+    const list = await fbStore.ref(`notas_fotos/${notaId}`).listAll();
+    await Promise.all(list.items.map(item => item.delete().catch(()=>{})));
   } catch(e) {}
 }
-async function idbDelFotos(notaId) {
-  try {
-    const db = await idbOpen();
-    await new Promise((res, rej) => {
-      const req = db.transaction(_IDB_STORE,'readwrite').objectStore(_IDB_STORE).delete(notaId);
-      req.onsuccess = res; req.onerror = rej;
-    });
-  } catch(e) {}
+function verFotoUrl(url) {
+  const overlay = document.createElement('div');
+  overlay.style.cssText = 'position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.85);display:flex;align-items:center;justify-content:center;cursor:pointer';
+  overlay.onclick = () => overlay.remove();
+  const img = document.createElement('img');
+  img.src = url; img.style.cssText = 'max-width:92vw;max-height:88vh;border-radius:10px;box-shadow:0 8px 40px rgba(0,0,0,.6)';
+  overlay.appendChild(img); document.body.appendChild(overlay);
 }
 
 // ── NOTAS ──────────────────────────────────────────────────────────────────
@@ -1737,12 +1743,12 @@ async function cargarNotas() {
   if(overlay) overlay.style.display='none';
   const notas = DB.notas.filter(n => n.pacienteId === pacId).sort((a,b) => b.fecha.localeCompare(a.fecha));
   if(!notas.length) { lista.innerHTML='<div class="card"><p style="color:var(--ink2)">Sin notas clínicas</p></div>'; return; }
-  const fotosPorNota = await Promise.all(notas.map(n => idbGetFotos(n.id)));
+  const urlsPorNota = await Promise.all(notas.map(n => storageGetFotoUrls(n.id)));
   lista.innerHTML = notas.map((n, ni) => {
-    const fotos = fotosPorNota[ni];
-    const fotosHtml = fotos.length ? `
+    const urls = urlsPorNota[ni];
+    const fotosHtml = urls.length ? `
       <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;padding-top:8px;border-top:1px solid var(--border)">
-        ${fotos.map((f,i) => `<img src="${f}" style="width:80px;height:80px;object-fit:cover;border-radius:8px;border:1.5px solid var(--border);cursor:pointer" onclick="verFotoNotaIdb('${n.id}',${i})">`).join('')}
+        ${urls.map(url => `<img src="${url}" style="width:80px;height:80px;object-fit:cover;border-radius:8px;border:1.5px solid var(--border);cursor:pointer" onclick="verFotoUrl('${url}')">`).join('')}
       </div>` : '';
     return `
     <div class="card" style="margin-bottom:10px">
@@ -1769,22 +1775,15 @@ function abrirNuevaNota() {
 
 async function editarNota(id) {
   const n = DB.notas.find(x => x.id === id); if(!n) return;
-  notaEditId = id; _notaFotos = await idbGetFotos(id);
+  notaEditId = id;
+  toast('⏳ Cargando fotos...');
+  const urls = await storageGetFotoUrls(id);
+  _notaFotos = (await Promise.all(urls.map(storageUrlToDataUrl))).filter(Boolean);
   document.getElementById('nota-fecha').value = n.fecha || '';
   document.getElementById('nota-hallazgos').value = n.hallazgos || '';
   renderNotaFotosPreview();
   document.getElementById('form-nota').style.display = 'block';
-}
-
-async function verFotoNotaIdb(notaId, idx) {
-  const fotos = await idbGetFotos(notaId);
-  const src = fotos[idx]; if(!src) return;
-  const overlay = document.createElement('div');
-  overlay.style.cssText = 'position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.85);display:flex;align-items:center;justify-content:center;cursor:pointer';
-  overlay.onclick = () => overlay.remove();
-  const img = document.createElement('img');
-  img.src = src; img.style.cssText = 'max-width:92vw;max-height:88vh;border-radius:10px;box-shadow:0 8px 40px rgba(0,0,0,.6)';
-  overlay.appendChild(img); document.body.appendChild(overlay);
+  toast('');
 }
 
 function cancelarNota() {
@@ -1802,7 +1801,8 @@ async function guardarNota() {
   if(notaEditId) {
     const ok = await fbSave('notas', notaEditId, data);
     if(ok) {
-      await idbSetFotos(notaEditId, _notaFotos.slice());
+      if(_notaFotos.length) { toast('⏳ Subiendo fotos...'); await storageSetFotos(notaEditId, _notaFotos.slice()); }
+      else await storageDelFotos(notaEditId);
       const idx = DB.notas.findIndex(n => n.id === notaEditId);
       if(idx>=0) DB.notas[idx] = {id:notaEditId,...data};
       notaEditId=null; _notaFotos=[]; document.getElementById('form-nota').style.display='none';
@@ -1811,7 +1811,7 @@ async function guardarNota() {
   } else {
     const id = await fbAdd('notas', data);
     if(id) {
-      await idbSetFotos(id, _notaFotos.slice());
+      if(_notaFotos.length) { toast('⏳ Subiendo fotos...'); await storageSetFotos(id, _notaFotos.slice()); }
       data.id=id; DB.notas.push(data); _notaFotos=[];
       document.getElementById('form-nota').style.display='none';
       cargarNotas(); toast('✅ Nota guardada');
@@ -1823,7 +1823,7 @@ async function borrarNota(id) {
   if(!confirm('¿Eliminar esta nota?')) return;
   const ok = await fbDel('notas', id);
   if(ok) {
-    await idbDelFotos(id);
+    await storageDelFotos(id);
     DB.notas=DB.notas.filter(n=>n.id!==id); cargarNotas(); toast('🗑️ Nota eliminada');
   }
 }
@@ -3256,7 +3256,10 @@ async function xpNotasPage(doc, pac, fechaStr, notas, conFotos) {
     return;
   }
   const fotosPorNota = conFotos
-    ? await Promise.all(notas.map(n => idbGetFotos(n.id)))
+    ? await Promise.all(notas.map(async n => {
+        const urls = await storageGetFotoUrls(n.id);
+        return (await Promise.all(urls.map(storageUrlToDataUrl))).filter(Boolean);
+      }))
     : notas.map(() => []);
   // pre-cargar dimensiones reales para mantener aspect ratio
   const dimsPorNota = await Promise.all(fotosPorNota.map(fotos =>
