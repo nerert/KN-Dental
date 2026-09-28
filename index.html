@@ -636,6 +636,18 @@ th{font-weight:700;color:var(--ink2);font-size:0.78rem;text-transform:uppercase;
       <p style="font-size:.75rem;color:var(--ink2);font-weight:600;margin-bottom:6px">Vista previa:</p>
       <pre id="cfg-wpp-preview" style="font-size:.82rem;white-space:pre-wrap;color:var(--ink);margin:0"></pre>
     </div>
+    <div style="margin-bottom:14px">
+      <label style="font-size:.82rem;color:var(--ink2);font-weight:600;display:block;margin-bottom:8px">🎨 Paleta de colores</label>
+      <div id="cfg-paletas" style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
+        <button type="button" data-paleta="rosa"    title="Rosa"    onclick="seleccionarPaleta('rosa')"    style="width:32px;height:32px;border-radius:50%;background:#d6a8c4;border:3px solid transparent;cursor:pointer;transition:transform .15s;outline:none"></button>
+        <button type="button" data-paleta="morado"  title="Morado"  onclick="seleccionarPaleta('morado')"  style="width:32px;height:32px;border-radius:50%;background:#9b8bc4;border:3px solid transparent;cursor:pointer;transition:transform .15s;outline:none"></button>
+        <button type="button" data-paleta="azul"    title="Azul"    onclick="seleccionarPaleta('azul')"    style="width:32px;height:32px;border-radius:50%;background:#7bafd4;border:3px solid transparent;cursor:pointer;transition:transform .15s;outline:none"></button>
+        <button type="button" data-paleta="teal"    title="Teal"    onclick="seleccionarPaleta('teal')"    style="width:32px;height:32px;border-radius:50%;background:#5fb8c0;border:3px solid transparent;cursor:pointer;transition:transform .15s;outline:none"></button>
+        <button type="button" data-paleta="verde"   title="Verde"   onclick="seleccionarPaleta('verde')"   style="width:32px;height:32px;border-radius:50%;background:#7ab89e;border:3px solid transparent;cursor:pointer;transition:transform .15s;outline:none"></button>
+        <button type="button" data-paleta="naranja" title="Naranja" onclick="seleccionarPaleta('naranja')" style="width:32px;height:32px;border-radius:50%;background:#d4956a;border:3px solid transparent;cursor:pointer;transition:transform .15s;outline:none"></button>
+      </div>
+      <p style="font-size:.75rem;color:var(--ink2);margin-top:6px">Elige un color y luego guarda la configuración.</p>
+    </div>
     <div style="display:flex;gap:10px;flex-wrap:wrap">
       <button class="btn btn-primary" onclick="guardarConfig()">💾 Guardar configuración</button>
       <button class="btn btn-secondary" onclick="resetearConfig()">↺ Restaurar predeterminado</button>
@@ -948,13 +960,44 @@ function loadConfig() {
   catch(e) { return Object.assign({}, _CFG_DEFAULT); }
 }
 
+const _PALETAS = {
+  rosa:    {accent:'#d6a8c4',accent2:'#c090b8',hover:'#b07898',light:'#fdf0f8',bg:'#f8f7fc',surface2:'#f3f0fb',border:'#e5e0f8',ink2:'#6b5fa0'},
+  morado:  {accent:'#9b8bc4',accent2:'#8070b0',hover:'#695a9e',light:'#f2eefb',bg:'#f5f4fc',surface2:'#ece8f8',border:'#dad4f4',ink2:'#50409e'},
+  azul:    {accent:'#7bafd4',accent2:'#5e96c0',hover:'#4a7daa',light:'#eef5fb',bg:'#f5f7fc',surface2:'#e8f1f8',border:'#d0e3f0',ink2:'#375e8a'},
+  teal:    {accent:'#5fb8c0',accent2:'#449ea8',hover:'#308590',light:'#ecf8f9',bg:'#f4f9fa',surface2:'#e2f3f5',border:'#c5e8ec',ink2:'#206068'},
+  verde:   {accent:'#7ab89e',accent2:'#5fa085',hover:'#4a8970',light:'#edf8f3',bg:'#f5f9f7',surface2:'#e5f4ec',border:'#cce6d7',ink2:'#2d6b50'},
+  naranja: {accent:'#d4956a',accent2:'#be7c50',hover:'#a86538',light:'#fdf4ed',bg:'#faf7f5',surface2:'#f5ece3',border:'#eed9c8',ink2:'#8a4e28'}
+};
+let _selectedPaleta = 'rosa';
+
+function seleccionarPaleta(nombre) {
+  _selectedPaleta = nombre;
+  const pal = _PALETAS[nombre];
+  if(!pal) return;
+  const r = document.documentElement.style;
+  r.setProperty('--accent', pal.accent);
+  r.setProperty('--accent2', pal.accent2);
+  r.setProperty('--accent-hover', pal.hover);
+  r.setProperty('--accent-light', pal.light);
+  r.setProperty('--bg', pal.bg);
+  r.setProperty('--surface2', pal.surface2);
+  r.setProperty('--border', pal.border);
+  r.setProperty('--ink2', pal.ink2);
+  document.querySelectorAll('#cfg-paletas [data-paleta]').forEach(b => {
+    const active = b.dataset.paleta === nombre;
+    b.style.border = active ? '3px solid #333' : '3px solid transparent';
+    b.style.transform = active ? 'scale(1.2)' : 'scale(1)';
+  });
+}
+
 function guardarConfig() {
   const prev = loadConfig();
   const cfg = {
     clinica: document.getElementById('cfg-clinica')?.value.trim() || _CFG_DEFAULT.clinica,
     doctora: document.getElementById('cfg-doctora')?.value.trim() || _CFG_DEFAULT.doctora,
     logo: _pendingLogo === undefined ? prev.logo : _pendingLogo,
-    wppTmpl: document.getElementById('cfg-wpp-tmpl')?.value || _CFG_DEFAULT.wppTmpl
+    wppTmpl: document.getElementById('cfg-wpp-tmpl')?.value || _CFG_DEFAULT.wppTmpl,
+    paleta: _selectedPaleta
   };
   localStorage.setItem(_CFG_KEY, JSON.stringify(cfg));
   _pendingLogo = undefined;
@@ -993,6 +1036,7 @@ function quitarLogoPersonalizado() {
 
 function aplicarConfig(cfg) {
   cfg = cfg || loadConfig();
+  if(cfg.paleta) seleccionarPaleta(cfg.paleta);
   const logoSrc = cfg.logo || PDF_LOGO_DEFAULT;
   const elC = document.getElementById('sidebar-clinica');
   const elD = document.getElementById('sidebar-doctora');
@@ -1070,6 +1114,7 @@ function cargarConfigUI() {
   const p = document.getElementById('cfg-logo-preview');
   if(p) p.src = cfg.logo || PDF_LOGO_DEFAULT;
   _pendingLogo = undefined;
+  seleccionarPaleta(cfg.paleta || 'rosa');
   actualizarPreviewWpp();
 }
 
