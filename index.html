@@ -1806,7 +1806,6 @@ async function guardarNota() {
     const ok = await fbSave('notas', notaEditId, data);
     if(ok) {
       if(_notaFotos.length) { toast('⏳ Subiendo fotos...'); await storageSetFotos(notaEditId, _notaFotos.slice()); }
-      else await storageDelFotos(notaEditId);
       const idx = DB.notas.findIndex(n => n.id === notaEditId);
       if(idx>=0) DB.notas[idx] = {id:notaEditId,...data};
       notaEditId=null; _notaFotos=[]; document.getElementById('form-nota').style.display='none';
