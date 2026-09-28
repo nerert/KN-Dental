@@ -21,6 +21,7 @@
 <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-storage-compat.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
@@ -28,6 +29,7 @@
 :root {
   --accent:#d6a8c4; --accent2:#c090b8; --accent-light:#fdf0f8; --accent-hover:#b07898;
   --bg:#f8f7fc; --surface:#fff; --surface2:#f3f0fb; --border:#e5e0f8;
+  --sidebar-border:#f0d5e6; --login-dark:#8b3068;
   --ink:#1a1523; --ink2:#6b5fa0; --warn:#dc2626; --warn-light:#fee2e2;
   --badge-green-bg:#ede9fe; --badge-green-color:#5b21b6;
   --caries:#e07a5f; --obturado:#3a86ff; --ausente:#9ca3af; --fractura:#c9a84c;
@@ -35,8 +37,8 @@
 }
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--ink);display:flex;min-height:100vh}
-.sidebar{width:220px;min-height:100vh;background:#fdf0f8;border-right:1px solid #f0d5e6;display:flex;flex-direction:column;position:fixed;top:0;left:0;bottom:0;z-index:100;overflow-y:auto}
-.sidebar-logo{padding:20px 16px 12px;border-bottom:1px solid #f0d5e6}
+.sidebar{width:220px;min-height:100vh;background:var(--accent-light);border-right:1px solid var(--sidebar-border);display:flex;flex-direction:column;position:fixed;top:0;left:0;bottom:0;z-index:100;overflow-y:auto}
+.sidebar-logo{padding:20px 16px 12px;border-bottom:1px solid var(--sidebar-border)}
 .sidebar-logo h1{font-family:'Fraunces',serif;font-size:1.4rem;color:var(--accent)}
 .sidebar-logo p{font-size:0.72rem;color:var(--ink2);margin-top:2px}
 .nav-item{display:flex;align-items:center;gap:10px;padding:10px 16px;cursor:pointer;font-size:0.88rem;font-weight:500;color:var(--ink2);border-radius:8px;margin:2px 8px;transition:all .15s}
@@ -78,9 +80,10 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--ink);displa
 /* Odontogram */
 .odo-grid{display:flex;flex-direction:column;gap:4px;margin:16px 0}
 .odo-row{display:flex;gap:2px;justify-content:center}
+#citas-hoy-banner{background:linear-gradient(135deg,var(--accent),var(--accent2))}
 .diente-wrap{width:34px;cursor:pointer;text-align:center;transition:transform .1s}
 .diente-wrap:hover{transform:scale(1.1)}
-.diente-wrap.sel .tooth-body{stroke:#d6a8c4;stroke-width:3}
+.diente-wrap.sel .tooth-body{stroke:var(--accent);stroke-width:3}
 .diente-num{font-size:9px;color:var(--ink2);margin-top:1px}
 .tooth-body{fill:#f0ecfc;stroke:#c4b8f0;stroke-width:1.5;transition:fill .2s}
 .diente-wrap[data-e="caries"] .tooth-body{fill:var(--caries);stroke:#c0553c}
@@ -151,20 +154,20 @@ th{font-weight:700;color:var(--ink2);font-size:0.78rem;text-transform:uppercase;
 
 <!-- LOGIN SCREEN -->
 <style>
-#login-screen{position:fixed;inset:0;z-index:9999;background:linear-gradient(135deg,#8b3068 0%,#d6a8c4 60%,#e8c0d8 100%);display:flex;flex-direction:column;align-items:center;justify-content:center}
+#login-screen{position:fixed;inset:0;z-index:9999;background:linear-gradient(135deg,var(--login-dark) 0%,var(--accent) 60%,var(--accent-light) 100%);display:flex;flex-direction:column;align-items:center;justify-content:center}
 #login-box{background:#fff;border-radius:24px;padding:48px 40px;width:100%;max-width:380px;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,.3)}
 #login-box img{width:56px;height:56px;margin-bottom:8px}
 .brand-eyebrow{font-weight:800;font-size:.62rem;letter-spacing:1.2px;color:var(--accent);text-transform:uppercase;margin-bottom:6px;text-align:center}
-#login-box h1{font-family:'Fraunces',serif;font-size:2rem;color:#d6a8c4;margin-bottom:4px}
+#login-box h1{font-family:'Fraunces',serif;font-size:2rem;color:var(--accent);margin-bottom:4px}
 #login-box p{color:#6b7280;font-size:.9rem;margin-bottom:32px}
 #login-box input{width:100%;padding:14px 16px;border:2px solid #e5e7eb;border-radius:12px;font-size:1rem;outline:none;transition:border .2s;box-sizing:border-box;margin-bottom:12px;font-family:inherit}
-#login-box input:focus{border-color:#d6a8c4}
+#login-box input:focus{border-color:var(--accent)}
 #login-remember{display:flex;align-items:center;gap:8px;margin:-2px 0 16px;text-align:left;user-select:none;cursor:pointer}
-#login-remember input{width:16px;height:16px;margin:0;accent-color:#d6a8c4;cursor:pointer}
+#login-remember input{width:16px;height:16px;margin:0;accent-color:var(--accent);cursor:pointer}
 #login-remember label{font-size:.85rem;color:#6b7280;cursor:pointer}
-#login-btn{width:100%;padding:14px;background:#d6a8c4;color:#fff;border:none;border-radius:12px;font-size:1rem;font-weight:700;cursor:pointer;transition:background .2s}
-#login-btn:hover{background:#b07898}
-#login-btn:disabled{background:#e8c8dc;cursor:not-allowed}
+#login-btn{width:100%;padding:14px;background:var(--accent);color:#fff;border:none;border-radius:12px;font-size:1rem;font-weight:700;cursor:pointer;transition:background .2s}
+#login-btn:hover{background:var(--accent-hover)}
+#login-btn:disabled{background:var(--accent-light);cursor:not-allowed}
 #login-error{color:#ef4444;font-size:.85rem;margin-top:10px;display:none}
 </style>
 <div id="login-screen">
@@ -211,7 +214,7 @@ th{font-weight:700;color:var(--ink2);font-size:0.78rem;text-transform:uppercase;
   <div class="nav-item" onclick="showPage('catalogo')"><span class="nav-icon">🏷️</span> Catálogo</div>
   <div class="nav-item" onclick="showPage('respaldo')"><span class="nav-icon">⚙️</span> Configuración</div>
   <div style="flex:1"></div>
-  <div style="padding:10px 8px;border-top:1px solid #f0d5e6">
+  <div style="padding:10px 8px;border-top:1px solid var(--sidebar-border)">
     <div id="sidebar-paciente" style="display:none;align-items:center;gap:8px;padding:7px 10px;border-radius:8px;background:var(--accent-light);margin-bottom:6px;font-size:.78rem;color:var(--accent);font-weight:600;cursor:pointer" onclick="if(pacienteActivo)irAPaciente(pacienteActivo)" title="Ver historia clínica">
       <span id="sidebar-pac-avatar" class="sidebar-pac-avatar"></span><span id="sidebar-pac-nombre" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1"></span>
     </div>
@@ -226,7 +229,7 @@ th{font-weight:700;color:var(--ink2);font-size:0.78rem;text-transform:uppercase;
 
 <!-- DASHBOARD -->
 <div class="page active" id="page-dashboard">
-  <div id="citas-hoy-banner" style="display:none;background:linear-gradient(135deg,#d6a8c4,#c090b8);color:#fff;border-radius:16px;padding:16px 20px;margin-bottom:16px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">
+  <div id="citas-hoy-banner" style="display:none;color:#fff;border-radius:16px;padding:16px 20px;margin-bottom:16px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">
     <div style="display:flex;align-items:center;gap:12px">
       <span style="font-size:1.8rem">📅</span>
       <div>
@@ -403,6 +406,12 @@ th{font-weight:700;color:var(--ink2);font-size:0.78rem;text-transform:uppercase;
       <h4 style="margin-bottom:12px;color:var(--accent)">Nueva nota</h4>
       <div class="form-group"><label>Fecha</label><input type="date" id="nota-fecha"></div>
       <div class="form-group"><label>Hallazgos / Notas</label><textarea id="nota-hallazgos" rows="4" placeholder="Describe la consulta..."></textarea></div>
+      <div style="margin-bottom:12px">
+        <label style="font-size:.82rem;color:var(--ink2);font-weight:600;display:block;margin-bottom:6px">📷 Fotos de la nota</label>
+        <input type="file" id="nota-fotos-input" accept="image/*" multiple style="display:none" onchange="onNotaFotosChange(this)">
+        <button type="button" class="btn btn-secondary" style="font-size:.78rem;padding:5px 12px" onclick="document.getElementById('nota-fotos-input').click()">📷 Adjuntar fotos</button>
+        <div id="nota-fotos-preview" style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px"></div>
+      </div>
       <div style="display:flex;gap:8px">
         <button class="btn btn-primary" onclick="guardarNota()">💾 Guardar</button>
         <button class="btn btn-secondary" onclick="cancelarNota()">Cancelar</button>
@@ -480,7 +489,7 @@ th{font-weight:700;color:var(--ink2);font-size:0.78rem;text-transform:uppercase;
   <!-- Barra de estado de sincronización Google Calendar -->
   <div id="gcal-status-bar" style="display:none;background:#f5f3ff;border:1.5px solid #ddd6fe;border-radius:12px;padding:10px 16px;margin-bottom:12px;align-items:center;gap:10px;font-size:.88rem">
     <span id="gcal-status-icon">📅</span>
-    <span id="gcal-status-msg" style="flex:1;color:#b07898;font-weight:600">Conectando con Google Calendar…</span>
+    <span id="gcal-status-msg" style="flex:1;color:var(--accent-hover);font-weight:600">Conectando con Google Calendar…</span>
     <span id="gcal-status-time" style="color:#6b7280;font-size:.8rem"></span>
   </div>
   <!-- Eventos de Google Calendar del día -->
@@ -636,6 +645,18 @@ th{font-weight:700;color:var(--ink2);font-size:0.78rem;text-transform:uppercase;
       <p style="font-size:.75rem;color:var(--ink2);font-weight:600;margin-bottom:6px">Vista previa:</p>
       <pre id="cfg-wpp-preview" style="font-size:.82rem;white-space:pre-wrap;color:var(--ink);margin:0"></pre>
     </div>
+    <div style="margin-bottom:14px">
+      <label style="font-size:.82rem;color:var(--ink2);font-weight:600;display:block;margin-bottom:8px">🎨 Paleta de colores</label>
+      <div id="cfg-paletas" style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
+        <button type="button" data-paleta="rosa"    title="Rosa"    onclick="seleccionarPaleta('rosa')"    style="width:32px;height:32px;border-radius:50%;background:#d6a8c4;border:3px solid transparent;cursor:pointer;transition:transform .15s;outline:none"></button>
+        <button type="button" data-paleta="morado"  title="Morado"  onclick="seleccionarPaleta('morado')"  style="width:32px;height:32px;border-radius:50%;background:#9b8bc4;border:3px solid transparent;cursor:pointer;transition:transform .15s;outline:none"></button>
+        <button type="button" data-paleta="azul"    title="Azul"    onclick="seleccionarPaleta('azul')"    style="width:32px;height:32px;border-radius:50%;background:#7bafd4;border:3px solid transparent;cursor:pointer;transition:transform .15s;outline:none"></button>
+        <button type="button" data-paleta="teal"    title="Teal"    onclick="seleccionarPaleta('teal')"    style="width:32px;height:32px;border-radius:50%;background:#5fb8c0;border:3px solid transparent;cursor:pointer;transition:transform .15s;outline:none"></button>
+        <button type="button" data-paleta="verde"   title="Verde"   onclick="seleccionarPaleta('verde')"   style="width:32px;height:32px;border-radius:50%;background:#7ab89e;border:3px solid transparent;cursor:pointer;transition:transform .15s;outline:none"></button>
+        <button type="button" data-paleta="naranja" title="Naranja" onclick="seleccionarPaleta('naranja')" style="width:32px;height:32px;border-radius:50%;background:#d4956a;border:3px solid transparent;cursor:pointer;transition:transform .15s;outline:none"></button>
+      </div>
+      <p style="font-size:.75rem;color:var(--ink2);margin-top:6px">Elige un color y luego guarda la configuración.</p>
+    </div>
     <div style="display:flex;gap:10px;flex-wrap:wrap">
       <button class="btn btn-primary" onclick="guardarConfig()">💾 Guardar configuración</button>
       <button class="btn btn-secondary" onclick="resetearConfig()">↺ Restaurar predeterminado</button>
@@ -703,9 +724,15 @@ th{font-weight:700;color:var(--ink2);font-size:0.78rem;text-transform:uppercase;
         <span>🦷 Odontograma</span>
       </label>
       <label style="display:flex;align-items:center;gap:10px;cursor:pointer">
-        <input type="checkbox" id="exp-notas" checked style="width:16px;height:16px;accent-color:var(--accent)">
+        <input type="checkbox" id="exp-notas" checked onchange="toggleNotasFotosSel()" style="width:16px;height:16px;accent-color:var(--accent)">
         <span>📝 Notas Clínicas</span>
       </label>
+      <div id="exp-notas-fotos-wrap" style="margin-left:26px">
+        <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:.85rem;color:var(--ink2)">
+          <input type="checkbox" id="exp-notas-fotos" checked style="width:14px;height:14px;accent-color:var(--accent)">
+          <span>📷 Incluir fotos en el PDF</span>
+        </label>
+      </div>
       <label style="display:flex;align-items:center;gap:10px;cursor:pointer">
         <input type="checkbox" id="exp-presupuestos" onchange="togglePresupSel()" style="width:16px;height:16px;accent-color:var(--accent)">
         <span>💰 Presupuestos</span>
@@ -798,7 +825,7 @@ th{font-weight:700;color:var(--ink2);font-size:0.78rem;text-transform:uppercase;
     <div class="form-group"><label>Notas</label><textarea id="cita-notas" rows="2"></textarea></div>
     <div id="gcal-sync-opt" style="display:none;margin:8px 0 4px">
       <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:.9rem;color:var(--ink)">
-        <input type="checkbox" id="cita-gcal-sync" style="width:16px;height:16px;accent-color:#d6a8c4">
+        <input type="checkbox" id="cita-gcal-sync" style="width:16px;height:16px;accent-color:var(--accent)">
         <span>📅 Sincronizar a Google Calendar automáticamente</span>
       </label>
     </div>
@@ -850,8 +877,9 @@ const firebaseConfig = {
   messagingSenderId: "842082089480",
   appId: "1:842082089480:web:449dbb696f5c798fb8efbd"
 };
-const fbApp = firebase.initializeApp(firebaseConfig);
-const db    = firebase.firestore();
+const fbApp   = firebase.initializeApp(firebaseConfig);
+const db      = firebase.firestore();
+const fbStore = firebase.storage();
 
 // ── AUTH ───────────────────────────────────────────────────────────────────
 firebase.auth().onAuthStateChanged(user => {
@@ -890,6 +918,7 @@ let pacienteActivo = null;
 let selDiente = null;
 let odoEditId = null;
 let notaEditId = null;
+let _notaFotos = [];
 let presupEditId = null;
 let citaEditId = null;
 let pagoEditId = null;
@@ -948,13 +977,56 @@ function loadConfig() {
   catch(e) { return Object.assign({}, _CFG_DEFAULT); }
 }
 
+const _PALETAS = {
+  rosa:    {accent:'#d6a8c4',accent2:'#c090b8',hover:'#b07898',light:'#fdf0f8',bg:'#f8f7fc',surface2:'#f3f0fb',border:'#e5e0f8',ink2:'#6b5fa0',sidebarBorder:'#f0d5e6',loginDark:'#8b3068'},
+  morado:  {accent:'#9b8bc4',accent2:'#8070b0',hover:'#695a9e',light:'#f2eefb',bg:'#f5f4fc',surface2:'#ece8f8',border:'#dad4f4',ink2:'#50409e',sidebarBorder:'#e0d8f2',loginDark:'#3d2e80'},
+  azul:    {accent:'#7bafd4',accent2:'#5e96c0',hover:'#4a7daa',light:'#eef5fb',bg:'#f5f7fc',surface2:'#e8f1f8',border:'#d0e3f0',ink2:'#375e8a',sidebarBorder:'#d5e8f2',loginDark:'#1e4d80'},
+  teal:    {accent:'#5fb8c0',accent2:'#449ea8',hover:'#308590',light:'#ecf8f9',bg:'#f4f9fa',surface2:'#e2f3f5',border:'#c5e8ec',ink2:'#206068',sidebarBorder:'#c8e8ec',loginDark:'#145c62'},
+  verde:   {accent:'#7ab89e',accent2:'#5fa085',hover:'#4a8970',light:'#edf8f3',bg:'#f5f9f7',surface2:'#e5f4ec',border:'#cce6d7',ink2:'#2d6b50',sidebarBorder:'#c5e5d8',loginDark:'#1a4d38'},
+  naranja: {accent:'#d4956a',accent2:'#be7c50',hover:'#a86538',light:'#fdf4ed',bg:'#faf7f5',surface2:'#f5ece3',border:'#eed9c8',ink2:'#8a4e28',sidebarBorder:'#efd5b8',loginDark:'#7a3010'}
+};
+const _PALETAS_XP = {
+  rosa:    {band:[253,240,248],bandBorder:[214,168,196],eyebrow:[192,144,184],label:[122,47,86], pendingBg:[238,227,240],pendingText:[138,85,112]},
+  morado:  {band:[242,238,251],bandBorder:[155,139,196],eyebrow:[128,112,176],label:[80,64,158],pendingBg:[235,230,248],pendingText:[80,64,158]},
+  azul:    {band:[238,245,251],bandBorder:[123,175,212],eyebrow:[94,150,192], label:[55,94,138], pendingBg:[230,242,250],pendingText:[55,94,138]},
+  teal:    {band:[236,248,249],bandBorder:[95,184,192], eyebrow:[68,158,168], label:[32,96,104], pendingBg:[220,244,246],pendingText:[32,96,104]},
+  verde:   {band:[237,248,243],bandBorder:[122,184,158],eyebrow:[95,160,133], label:[45,107,80], pendingBg:[225,245,235],pendingText:[45,107,80]},
+  naranja: {band:[253,244,237],bandBorder:[212,149,106],eyebrow:[190,124,80], label:[138,78,40], pendingBg:[250,235,220],pendingText:[138,78,40]}
+};
+let _selectedPaleta = 'rosa';
+
+function seleccionarPaleta(nombre) {
+  _selectedPaleta = nombre;
+  const pal = _PALETAS[nombre];
+  if(!pal) return;
+  const r = document.documentElement.style;
+  r.setProperty('--accent', pal.accent);
+  r.setProperty('--accent2', pal.accent2);
+  r.setProperty('--accent-hover', pal.hover);
+  r.setProperty('--accent-light', pal.light);
+  r.setProperty('--bg', pal.bg);
+  r.setProperty('--surface2', pal.surface2);
+  r.setProperty('--border', pal.border);
+  r.setProperty('--ink2', pal.ink2);
+  r.setProperty('--sidebar-border', pal.sidebarBorder);
+  r.setProperty('--login-dark', pal.loginDark);
+  const xpc = _PALETAS_XP[nombre];
+  if(xpc) { XP.band=xpc.band; XP.bandBorder=xpc.bandBorder; XP.eyebrow=xpc.eyebrow; XP.label=xpc.label; XP.pendingBg=xpc.pendingBg; XP.pendingText=xpc.pendingText; }
+  document.querySelectorAll('#cfg-paletas [data-paleta]').forEach(b => {
+    const active = b.dataset.paleta === nombre;
+    b.style.border = active ? '3px solid #333' : '3px solid transparent';
+    b.style.transform = active ? 'scale(1.2)' : 'scale(1)';
+  });
+}
+
 function guardarConfig() {
   const prev = loadConfig();
   const cfg = {
     clinica: document.getElementById('cfg-clinica')?.value.trim() || _CFG_DEFAULT.clinica,
     doctora: document.getElementById('cfg-doctora')?.value.trim() || _CFG_DEFAULT.doctora,
     logo: _pendingLogo === undefined ? prev.logo : _pendingLogo,
-    wppTmpl: document.getElementById('cfg-wpp-tmpl')?.value || _CFG_DEFAULT.wppTmpl
+    wppTmpl: document.getElementById('cfg-wpp-tmpl')?.value || _CFG_DEFAULT.wppTmpl,
+    paleta: _selectedPaleta
   };
   localStorage.setItem(_CFG_KEY, JSON.stringify(cfg));
   _pendingLogo = undefined;
@@ -993,6 +1065,7 @@ function quitarLogoPersonalizado() {
 
 function aplicarConfig(cfg) {
   cfg = cfg || loadConfig();
+  if(cfg.paleta) seleccionarPaleta(cfg.paleta);
   const logoSrc = cfg.logo || PDF_LOGO_DEFAULT;
   const elC = document.getElementById('sidebar-clinica');
   const elD = document.getElementById('sidebar-doctora');
@@ -1070,6 +1143,7 @@ function cargarConfigUI() {
   const p = document.getElementById('cfg-logo-preview');
   if(p) p.src = cfg.logo || PDF_LOGO_DEFAULT;
   _pendingLogo = undefined;
+  seleccionarPaleta(cfg.paleta || 'rosa');
   actualizarPreviewWpp();
 }
 
@@ -1208,9 +1282,9 @@ function renderPacientes() {
     const edad = pacEdad(p);
     const pendiente = pacTienePagoPendiente(p);
     return `
-    <div style="display:flex;align-items:center;gap:16px;padding:14px 18px;margin-bottom:9px;background:${activo ? '#fdf0f8' : '#fff'};border:1.5px solid ${activo ? '#d6a8c4' : '#ece3f5'};border-radius:12px;cursor:pointer"
+    <div style="display:flex;align-items:center;gap:16px;padding:14px 18px;margin-bottom:9px;background:${activo ? 'var(--accent-light)' : '#fff'};border:1.5px solid ${activo ? 'var(--accent)' : 'var(--border)'};border-radius:12px;cursor:pointer"
       onclick="setPacienteActivo('${p.id}')">
-      <div style="width:42px;height:42px;border-radius:50%;background:#fdf0f8;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:13px;color:#b07898;flex:none">${pacIniciales(p)}</div>
+      <div style="width:42px;height:42px;border-radius:50%;background:var(--accent-light);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:13px;color:var(--accent-hover);flex:none">${pacIniciales(p)}</div>
       <div style="flex:1;min-width:0">
         <div style="font-weight:700;font-size:14px">${p.nombre} ${p.apellido}</div>
         <div style="font-size:12px;color:#7a6a94;margin-top:1px">${edad!=null ? edad+' años · ' : ''}${p.tel||'—'}</div>
@@ -1562,8 +1636,106 @@ async function guardarHistoria() {
   toast(ok ? '✅ Historia guardada' : '❌ Error al guardar');
 }
 
+// ── FOTOS NOTAS (Firebase Storage) ────────────────────────────────────────────
+async function storageGetFotoUrls(notaId) {
+  try {
+    const list = await fbStore.ref(`notas_fotos/${notaId}`).listAll();
+    if(!list.items.length) return [];
+    const sorted = list.items.sort((a,b) => a.name.localeCompare(b.name, undefined, {numeric:true}));
+    return await Promise.all(sorted.map(item => item.getDownloadURL()));
+  } catch(e) { return []; }
+}
+async function storageUrlToDataUrl(url) {
+  try {
+    const resp = await fetch(url);
+    const blob = await resp.blob();
+    return new Promise(res => {
+      const reader = new FileReader();
+      reader.onload = e => res(e.target.result);
+      reader.readAsDataURL(blob);
+    });
+  } catch(e) { return null; }
+}
+async function storageSetFotos(notaId, fotosBase64) {
+  try {
+    const list = await fbStore.ref(`notas_fotos/${notaId}`).listAll();
+    await Promise.all(list.items.map(item => item.delete().catch(()=>{})));
+  } catch(e) {}
+  for(let i = 0; i < fotosBase64.length; i++) {
+    const ref = fbStore.ref(`notas_fotos/${notaId}/${i}.jpg`);
+    await ref.putString(fotosBase64[i], 'data_url');
+  }
+}
+async function storageDelFotos(notaId) {
+  try {
+    const list = await fbStore.ref(`notas_fotos/${notaId}`).listAll();
+    await Promise.all(list.items.map(item => item.delete().catch(()=>{})));
+  } catch(e) {}
+}
+function verFotoUrl(url) {
+  const overlay = document.createElement('div');
+  overlay.style.cssText = 'position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.85);display:flex;align-items:center;justify-content:center;cursor:pointer';
+  overlay.onclick = () => overlay.remove();
+  const img = document.createElement('img');
+  img.src = url; img.style.cssText = 'max-width:92vw;max-height:88vh;border-radius:10px;box-shadow:0 8px 40px rgba(0,0,0,.6)';
+  overlay.appendChild(img); document.body.appendChild(overlay);
+}
+
 // ── NOTAS ──────────────────────────────────────────────────────────────────
-function cargarNotas() {
+function toggleNotasFotosSel() {
+  const wrap = document.getElementById('exp-notas-fotos-wrap');
+  if(wrap) wrap.style.display = document.getElementById('exp-notas')?.checked ? '' : 'none';
+}
+
+function renderNotaFotosPreview() {
+  const el = document.getElementById('nota-fotos-preview'); if(!el) return;
+  el.innerHTML = _notaFotos.map((f,i) => `
+    <div style="position:relative">
+      <img src="${f}" style="width:72px;height:72px;object-fit:cover;border-radius:8px;border:1.5px solid var(--border);cursor:pointer" onclick="verFotoNota(null,${i})">
+      <button onclick="quitarFotoNota(${i})" type="button" style="position:absolute;top:-6px;right:-6px;background:var(--warn);color:#fff;border:none;border-radius:50%;width:18px;height:18px;cursor:pointer;font-size:.75rem;line-height:18px;padding:0;text-align:center">×</button>
+    </div>`).join('');
+}
+
+function quitarFotoNota(i) {
+  _notaFotos.splice(i, 1);
+  renderNotaFotosPreview();
+}
+
+function verFotoNota(notaId, idx) {
+  // preview de fotos en el formulario (antes de guardar)
+  const src = _notaFotos[idx]; if(!src) return;
+  const overlay = document.createElement('div');
+  overlay.style.cssText = 'position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.85);display:flex;align-items:center;justify-content:center;cursor:pointer';
+  overlay.onclick = () => overlay.remove();
+  const img = document.createElement('img');
+  img.src = src; img.style.cssText = 'max-width:92vw;max-height:88vh;border-radius:10px;box-shadow:0 8px 40px rgba(0,0,0,.6)';
+  overlay.appendChild(img); document.body.appendChild(overlay);
+}
+
+function onNotaFotosChange(input) {
+  const files = Array.from(input.files || []); if(!files.length) return;
+  input.value = '';
+  files.forEach(file => {
+    const reader = new FileReader();
+    reader.onload = e => {
+      const img = new Image();
+      img.onload = () => {
+        const maxDim = 1200;
+        const scale = Math.min(1, maxDim / Math.max(img.width, img.height));
+        const canvas = document.createElement('canvas');
+        canvas.width = Math.round(img.width * scale);
+        canvas.height = Math.round(img.height * scale);
+        canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+        _notaFotos.push(canvas.toDataURL('image/jpeg', 0.72));
+        renderNotaFotosPreview();
+      };
+      img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+async function cargarNotas() {
   const pacId = document.getElementById('select-paciente-notas')?.value || pacienteActivo;
   const overlay = document.getElementById('notas-overlay');
   const lista = document.getElementById('lista-notas');
@@ -1571,7 +1743,14 @@ function cargarNotas() {
   if(overlay) overlay.style.display='none';
   const notas = DB.notas.filter(n => n.pacienteId === pacId).sort((a,b) => b.fecha.localeCompare(a.fecha));
   if(!notas.length) { lista.innerHTML='<div class="card"><p style="color:var(--ink2)">Sin notas clínicas</p></div>'; return; }
-  lista.innerHTML = notas.map(n => `
+  const urlsPorNota = await Promise.all(notas.map(n => storageGetFotoUrls(n.id)));
+  lista.innerHTML = notas.map((n, ni) => {
+    const urls = urlsPorNota[ni];
+    const fotosHtml = urls.length ? `
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;padding-top:8px;border-top:1px solid var(--border)">
+        ${urls.map(url => `<img src="${url}" style="width:80px;height:80px;object-fit:cover;border-radius:8px;border:1.5px solid var(--border);cursor:pointer" onclick="verFotoUrl('${url}')">`).join('')}
+      </div>` : '';
+    return `
     <div class="card" style="margin-bottom:10px">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
         <strong style="color:var(--accent)">${n.fecha}</strong>
@@ -1581,46 +1760,59 @@ function cargarNotas() {
         </div>
       </div>
       <p style="font-size:.9rem;white-space:pre-wrap">${n.hallazgos || ''}</p>
-    </div>`).join('');
+      ${fotosHtml}
+    </div>`;
+  }).join('');
 }
 
 function abrirNuevaNota() {
-  notaEditId = null;
+  notaEditId = null; _notaFotos = [];
   document.getElementById('nota-fecha').value = new Date().toISOString().slice(0,10);
   document.getElementById('nota-hallazgos').value = '';
+  renderNotaFotosPreview();
   document.getElementById('form-nota').style.display = 'block';
 }
 
-function editarNota(id) {
+async function editarNota(id) {
   const n = DB.notas.find(x => x.id === id); if(!n) return;
   notaEditId = id;
+  toast('⏳ Cargando fotos...');
+  const urls = await storageGetFotoUrls(id);
+  _notaFotos = (await Promise.all(urls.map(storageUrlToDataUrl))).filter(Boolean);
   document.getElementById('nota-fecha').value = n.fecha || '';
   document.getElementById('nota-hallazgos').value = n.hallazgos || '';
+  renderNotaFotosPreview();
   document.getElementById('form-nota').style.display = 'block';
+  toast('');
 }
 
 function cancelarNota() {
-  notaEditId = null;
+  notaEditId = null; _notaFotos = [];
+  renderNotaFotosPreview();
   document.getElementById('form-nota').style.display = 'none';
 }
 
 async function guardarNota() {
   const pacId = document.getElementById('select-paciente-notas')?.value || pacienteActivo;
   if(!pacId) { toast('⚠️ Selecciona un paciente'); return; }
+  // fotos se guardan en IndexedDB, NO en Firestore
   const data = { pacienteId:pacId, fecha:document.getElementById('nota-fecha').value, hallazgos:document.getElementById('nota-hallazgos').value };
   toast('⏳ Guardando...');
   if(notaEditId) {
     const ok = await fbSave('notas', notaEditId, data);
     if(ok) {
+      if(_notaFotos.length) { toast('⏳ Subiendo fotos...'); await storageSetFotos(notaEditId, _notaFotos.slice()); }
+      else await storageDelFotos(notaEditId);
       const idx = DB.notas.findIndex(n => n.id === notaEditId);
       if(idx>=0) DB.notas[idx] = {id:notaEditId,...data};
-      notaEditId=null; document.getElementById('form-nota').style.display='none';
+      notaEditId=null; _notaFotos=[]; document.getElementById('form-nota').style.display='none';
       cargarNotas(); toast('✅ Nota actualizada');
     } else toast('❌ Error');
   } else {
     const id = await fbAdd('notas', data);
     if(id) {
-      data.id=id; DB.notas.push(data);
+      if(_notaFotos.length) { toast('⏳ Subiendo fotos...'); await storageSetFotos(id, _notaFotos.slice()); }
+      data.id=id; DB.notas.push(data); _notaFotos=[];
       document.getElementById('form-nota').style.display='none';
       cargarNotas(); toast('✅ Nota guardada');
     } else toast('❌ Error');
@@ -1630,7 +1822,10 @@ async function guardarNota() {
 async function borrarNota(id) {
   if(!confirm('¿Eliminar esta nota?')) return;
   const ok = await fbDel('notas', id);
-  if(ok) { DB.notas=DB.notas.filter(n=>n.id!==id); cargarNotas(); toast('🗑️ Nota eliminada'); }
+  if(ok) {
+    await storageDelFotos(id);
+    DB.notas=DB.notas.filter(n=>n.id!==id); cargarNotas(); toast('🗑️ Nota eliminada');
+  }
 }
 
 // ── PRESUPUESTOS ──────────────────────────────────────────────────────────
@@ -1926,7 +2121,7 @@ function mostrarOpcionesCita(c, pac) {
   // Header
   const header = document.createElement('div');
   header.style.cssText = 'display:flex;justify-content:space-between;align-items:center;margin-bottom:16px';
-  header.innerHTML = '<h3 style="margin:0;color:#b07898">Cita</h3>';
+  header.innerHTML = '<h3 style="margin:0;color:var(--accent-hover)">Cita</h3>';
   const btnX = document.createElement('button');
   btnX.textContent = '✕';
   btnX.style.cssText = 'background:none;border:none;font-size:1.2rem;cursor:pointer;color:#6b7280';
@@ -1961,7 +2156,7 @@ function mostrarOpcionesCita(c, pac) {
 
   const editBtn = document.createElement('button');
   editBtn.textContent = '✏️ Editar cita';
-  editBtn.style.cssText = 'background:#fdf0f8;color:#b07898;border:1.5px solid #d6a8c4;border-radius:12px;padding:11px;cursor:pointer;font-weight:600;font-size:.95rem';
+  editBtn.style.cssText = 'background:var(--accent-light);color:var(--accent-hover);border:1.5px solid var(--accent);border-radius:12px;padding:11px;cursor:pointer;font-weight:600;font-size:.95rem';
   editBtn.onclick = () => { popup.remove(); editarCita(c.id); };
   btns.appendChild(editBtn);
 
@@ -2779,7 +2974,7 @@ function xpDienteEsDelModo(diente, modo) {
   return t.sup.includes(n) || t.inf.includes(n);
 }
 
-const XP = {
+let XP = {
   pageW: 210, pageH: 297,
   band: [253,240,248], bandBorder: [214,168,196],
   heading: [64,50,90], muted: [122,106,148], label: [122,47,86],
@@ -3044,17 +3239,42 @@ function xpOdontogramaPage(doc, pac, fechaStr, regs, tipo) {
   });
 }
 
-function xpNotasPage(doc, pac, fechaStr, notas) {
+function xpImgDims(src) {
+  return new Promise(res => {
+    const img = new Image();
+    img.onload = () => res({w: img.naturalWidth, h: img.naturalHeight});
+    img.onerror = () => res({w: 1, h: 1});
+    img.src = src;
+  });
+}
+
+async function xpNotasPage(doc, pac, fechaStr, notas, conFotos) {
   let y = xpNewSectionPage(doc, 'Notas clínicas', pac, fechaStr) + 8;
   if(!notas.length) {
     doc.setFont('helvetica','normal'); doc.setFontSize(9); doc.setTextColor(...XP.muted);
     doc.text('Sin notas clínicas.', 14, y);
     return;
   }
-  notas.forEach((n, idx) => {
+  const fotosPorNota = conFotos
+    ? await Promise.all(notas.map(async n => {
+        const urls = await storageGetFotoUrls(n.id);
+        return (await Promise.all(urls.map(storageUrlToDataUrl))).filter(Boolean);
+      }))
+    : notas.map(() => []);
+  // pre-cargar dimensiones reales para mantener aspect ratio
+  const dimsPorNota = await Promise.all(fotosPorNota.map(fotos =>
+    Promise.all(fotos.filter(f=>f?.startsWith('data:')).map(xpImgDims))
+  ));
+  const CELL_W = 78, CELL_H = 72, COLS = 2, GAP = 8;
+  for(let idx = 0; idx < notas.length; idx++) {
+    const n = notas[idx];
     doc.setFont('helvetica','normal'); doc.setFontSize(8.6);
     const lines = doc.splitTextToSize(n.hallazgos||'', 160);
-    const blockH = Math.max(18, 12 + lines.length*4);
+    const fotosValidas = fotosPorNota[idx].filter(f=>f?.startsWith('data:'));
+    const dims = dimsPorNota[idx];
+    const fotosRows = Math.ceil(fotosValidas.length / COLS);
+    const fotoSectionH = fotosValidas.length ? (fotosRows*(CELL_H+GAP) + 8) : 0;
+    const blockH = Math.max(18, 12 + lines.length*4) + fotoSectionH;
     if(y + blockH > 262) y = xpNewSectionPage(doc, 'Notas clínicas', pac, fechaStr) + 8;
     doc.setFillColor(...XP.bandBorder); doc.circle(17.5, y+3, 1.3, 'F');
     if(idx < notas.length-1) {
@@ -3066,8 +3286,30 @@ function xpNotasPage(doc, pac, fechaStr, notas) {
     doc.text(xpFechaLarga(n.fecha), 28, y+7);
     doc.setFont('helvetica','normal'); doc.setFontSize(8.6); doc.setTextColor(...XP.heading);
     doc.text(lines, 28, y+13);
+    if(fotosValidas.length) {
+      let fy = y + 12 + lines.length*4 + 6;
+      doc.setDrawColor(...XP.cardBorder); doc.setLineWidth(0.15);
+      doc.line(28, fy-2, 192, fy-2);
+      fy += 2;
+      fotosValidas.forEach((src, fi) => {
+        const col = fi % COLS;
+        const row = Math.floor(fi / COLS);
+        const cellX = 28 + col*(CELL_W+GAP);
+        const cellY = fy + row*(CELL_H+GAP);
+        const dim = dims[fi] || {w:1,h:1};
+        // escalar manteniendo aspect ratio, centrar en celda
+        const scale = Math.min(CELL_W/dim.w, CELL_H/dim.h);
+        const dw = dim.w*scale, dh = dim.h*scale;
+        const ox = cellX + (CELL_W-dw)/2, oy = cellY + (CELL_H-dh)/2;
+        try {
+          doc.addImage(src, 'JPEG', ox, oy, dw, dh, '', 'FAST');
+          doc.setDrawColor(...XP.cardBorder); doc.setLineWidth(0.3);
+          doc.roundedRect(ox, oy, dw, dh, 1.5, 1.5, 'S');
+        } catch(e) {}
+      });
+    }
     y += blockH + 6;
-  });
+  }
 }
 
 function xpPresupuestosPage(doc, pac, fechaStr, presups) {
@@ -3374,7 +3616,8 @@ async function exportarExpediente(pacId) {
   }
   if(incNotas) {
     const notas = DB.notas.filter(n => n.pacienteId === pacId).sort((a,b) => (xpParseFecha(b.fecha)||0) - (xpParseFecha(a.fecha)||0));
-    xpNotasPage(doc, pac, fechaStr, notas);
+    const conFotos = document.getElementById('exp-notas-fotos')?.checked !== false;
+    await xpNotasPage(doc, pac, fechaStr, notas, conFotos);
   }
   if(incPresup) {
     const presupSelId = document.getElementById('exp-presup-sel')?.value || 'todos';
@@ -3760,9 +4003,9 @@ async function gcalLoadEventsHoy() {
         const yaEnApp = vinculados.has(ev.id);
         const importBtn = yaEnApp
           ? '<span style="font-size:.75rem;color:#16a34a;font-weight:600">✅ En app</span>'
-          : '<button onclick="gcalImportarEvento(' + JSON.stringify(ev).replace(/"/g, '&quot;') + ')" style="background:#d6a8c4;color:#fff;border:none;border-radius:8px;padding:4px 10px;font-size:.78rem;cursor:pointer;font-weight:600">📥 Importar</button>';
+          : '<button onclick="gcalImportarEvento(' + JSON.stringify(ev).replace(/"/g, '&quot;') + ')" style="background:var(--accent);color:#fff;border:none;border-radius:8px;padding:4px 10px;font-size:.78rem;cursor:pointer;font-weight:600">📥 Importar</button>';
         return '<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border)">'
-          + '<div style="background:#d6a8c4;color:#fff;border-radius:8px;padding:4px 8px;font-size:.78rem;font-weight:700;white-space:nowrap;min-width:54px;text-align:center">' + start + (end ? '<br>' + end : '') + '</div>'
+          + '<div style="background:var(--accent);color:#fff;border-radius:8px;padding:4px 8px;font-size:.78rem;font-weight:700;white-space:nowrap;min-width:54px;text-align:center">' + start + (end ? '<br>' + end : '') + '</div>'
           + '<div style="flex:1"><div style="font-weight:600;font-size:.9rem">' + (ev.summary || 'Sin título') + '</div>' + (ev.description ? '<div style="font-size:.8rem;color:var(--ink2)">' + ev.description + '</div>' : '') + '</div>'
           + '<div style="flex-shrink:0">' + importBtn + '</div>'
           + '</div>';
