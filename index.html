@@ -21,7 +21,6 @@
 <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-storage-compat.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
@@ -879,8 +878,6 @@ const firebaseConfig = {
 };
 const fbApp   = firebase.initializeApp(firebaseConfig);
 const db      = firebase.firestore();
-let fbStore = null;
-try { fbStore = firebase.storage(); } catch(e) { console.warn('Firebase Storage no disponible:', e); }
 
 // ── AUTH ───────────────────────────────────────────────────────────────────
 firebase.auth().onAuthStateChanged(user => {
@@ -1638,44 +1635,27 @@ async function guardarHistoria() {
 }
 
 // ── FOTOS NOTAS (Firebase Storage) ────────────────────────────────────────────
-async function storageGetFotoUrls(notaId) {
-  if(!fbStore) return [];
-  try {
-    const list = await fbStore.ref(`notas_fotos/${notaId}`).listAll();
-    if(!list.items.length) return [];
-    const sorted = list.items.sort((a,b) => a.name.localeCompare(b.name, undefined, {numeric:true}));
-    return await Promise.all(sorted.map(item => item.getDownloadURL()));
-  } catch(e) { return []; }
-}
-async function storageUrlToDataUrl(url) {
-  try {
-    const resp = await fetch(url);
-    const blob = await resp.blob();
-    return new Promise(res => {
-      const reader = new FileReader();
-      reader.onload = e => res(e.target.result);
-      reader.readAsDataURL(blob);
+// ── FOTOS NOTAS (IndexedDB local) ─────────────────────────────────────────
+const _idb = (() => {
+  let _db = null;
+  function open() {
+    if(_db) return Promise.resolve(_db);
+    return new Promise((res, rej) => {
+      const req = indexedDB.open('kndFotos', 1);
+      req.onupgradeneeded = e => e.target.result.createObjectStore('notaFotos');
+      req.onsuccess = e => { _db = e.target.result; res(_db); };
+      req.onerror = () => rej(req.error);
     });
-  } catch(e) { return null; }
-}
-async function storageSetFotos(notaId, fotosBase64) {
-  if(!fbStore) return;
-  try {
-    const list = await fbStore.ref(`notas_fotos/${notaId}`).listAll();
-    await Promise.all(list.items.map(item => item.delete().catch(()=>{})));
-  } catch(e) {}
-  for(let i = 0; i < fotosBase64.length; i++) {
-    const ref = fbStore.ref(`notas_fotos/${notaId}/${i}.jpg`);
-    await ref.putString(fotosBase64[i], 'data_url');
   }
-}
-async function storageDelFotos(notaId) {
-  if(!fbStore) return;
-  try {
-    const list = await fbStore.ref(`notas_fotos/${notaId}`).listAll();
-    await Promise.all(list.items.map(item => item.delete().catch(()=>{})));
-  } catch(e) {}
-}
+  return {
+    async get(key) { try { const d=await open(); return new Promise(r => { const t=d.transaction('notaFotos','readonly'),q=t.objectStore('notaFotos').get(key); q.onsuccess=()=>r(q.result||[]); q.onerror=()=>r([]); }); } catch(e){return[];} },
+    async set(key,val) { try { const d=await open(); return new Promise(r => { const t=d.transaction('notaFotos','readwrite'); t.objectStore('notaFotos').put(val,key); t.oncomplete=()=>r(); t.onerror=()=>r(); }); } catch(e){} },
+    async del(key) { try { const d=await open(); return new Promise(r => { const t=d.transaction('notaFotos','readwrite'); t.objectStore('notaFotos').delete(key); t.oncomplete=()=>r(); t.onerror=()=>r(); }); } catch(e){} }
+  };
+})();
+async function storageGetFotos(notaId) { return _idb.get(notaId); }
+async function storageSetFotos(notaId, fotosBase64) { await _idb.set(notaId, fotosBase64); }
+async function storageDelFotos(notaId) { await _idb.del(notaId); }
 function verFotoUrl(url) {
   const overlay = document.createElement('div');
   overlay.style.cssText = 'position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.85);display:flex;align-items:center;justify-content:center;cursor:pointer';
@@ -1747,12 +1727,12 @@ async function cargarNotas() {
   if(overlay) overlay.style.display='none';
   const notas = DB.notas.filter(n => n.pacienteId === pacId).sort((a,b) => b.fecha.localeCompare(a.fecha));
   if(!notas.length) { lista.innerHTML='<div class="card"><p style="color:var(--ink2)">Sin notas clínicas</p></div>'; return; }
-  const urlsPorNota = await Promise.all(notas.map(n => storageGetFotoUrls(n.id)));
+  const fotosPorNota = await Promise.all(notas.map(n => storageGetFotos(n.id)));
   lista.innerHTML = notas.map((n, ni) => {
-    const urls = urlsPorNota[ni];
-    const fotosHtml = urls.length ? `
+    const fotos = fotosPorNota[ni];
+    const fotosHtml = fotos.length ? `
       <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;padding-top:8px;border-top:1px solid var(--border)">
-        ${urls.map(url => `<img src="${url}" style="width:80px;height:80px;object-fit:cover;border-radius:8px;border:1.5px solid var(--border);cursor:pointer" onclick="verFotoUrl('${url}')">`).join('')}
+        ${fotos.map(src => `<img src="${src}" style="width:80px;height:80px;object-fit:cover;border-radius:8px;border:1.5px solid var(--border);cursor:pointer" onclick="verFotoUrl(this.src)">`).join('')}
       </div>` : '';
     return `
     <div class="card" style="margin-bottom:10px">
@@ -1780,9 +1760,7 @@ function abrirNuevaNota() {
 async function editarNota(id) {
   const n = DB.notas.find(x => x.id === id); if(!n) return;
   notaEditId = id;
-  toast('⏳ Cargando fotos...');
-  const urls = await storageGetFotoUrls(id);
-  _notaFotos = (await Promise.all(urls.map(storageUrlToDataUrl))).filter(Boolean);
+  _notaFotos = await storageGetFotos(id);
   document.getElementById('nota-fecha').value = n.fecha || '';
   document.getElementById('nota-hallazgos').value = n.hallazgos || '';
   renderNotaFotosPreview();
@@ -3259,10 +3237,7 @@ async function xpNotasPage(doc, pac, fechaStr, notas, conFotos) {
     return;
   }
   const fotosPorNota = conFotos
-    ? await Promise.all(notas.map(async n => {
-        const urls = await storageGetFotoUrls(n.id);
-        return (await Promise.all(urls.map(storageUrlToDataUrl))).filter(Boolean);
-      }))
+    ? await Promise.all(notas.map(n => storageGetFotos(n.id)))
     : notas.map(() => []);
   // pre-cargar dimensiones reales para mantener aspect ratio
   const dimsPorNota = await Promise.all(fotosPorNota.map(fotos =>
