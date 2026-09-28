@@ -28,7 +28,7 @@
 :root {
   --accent:#d6a8c4; --accent2:#c090b8; --accent-light:#fdf0f8; --accent-hover:#b07898;
   --bg:#f8f7fc; --surface:#fff; --surface2:#f3f0fb; --border:#e5e0f8;
-  --sidebar-border:#f0d5e6;
+  --sidebar-border:#f0d5e6; --login-dark:#8b3068;
   --ink:#1a1523; --ink2:#6b5fa0; --warn:#dc2626; --warn-light:#fee2e2;
   --badge-green-bg:#ede9fe; --badge-green-color:#5b21b6;
   --caries:#e07a5f; --obturado:#3a86ff; --ausente:#9ca3af; --fractura:#c9a84c;
@@ -79,9 +79,10 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--ink);displa
 /* Odontogram */
 .odo-grid{display:flex;flex-direction:column;gap:4px;margin:16px 0}
 .odo-row{display:flex;gap:2px;justify-content:center}
+#citas-hoy-banner{background:linear-gradient(135deg,var(--accent),var(--accent2))}
 .diente-wrap{width:34px;cursor:pointer;text-align:center;transition:transform .1s}
 .diente-wrap:hover{transform:scale(1.1)}
-.diente-wrap.sel .tooth-body{stroke:#d6a8c4;stroke-width:3}
+.diente-wrap.sel .tooth-body{stroke:var(--accent);stroke-width:3}
 .diente-num{font-size:9px;color:var(--ink2);margin-top:1px}
 .tooth-body{fill:#f0ecfc;stroke:#c4b8f0;stroke-width:1.5;transition:fill .2s}
 .diente-wrap[data-e="caries"] .tooth-body{fill:var(--caries);stroke:#c0553c}
@@ -152,20 +153,20 @@ th{font-weight:700;color:var(--ink2);font-size:0.78rem;text-transform:uppercase;
 
 <!-- LOGIN SCREEN -->
 <style>
-#login-screen{position:fixed;inset:0;z-index:9999;background:linear-gradient(135deg,#8b3068 0%,#d6a8c4 60%,#e8c0d8 100%);display:flex;flex-direction:column;align-items:center;justify-content:center}
+#login-screen{position:fixed;inset:0;z-index:9999;background:linear-gradient(135deg,var(--login-dark) 0%,var(--accent) 60%,var(--accent-light) 100%);display:flex;flex-direction:column;align-items:center;justify-content:center}
 #login-box{background:#fff;border-radius:24px;padding:48px 40px;width:100%;max-width:380px;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,.3)}
 #login-box img{width:56px;height:56px;margin-bottom:8px}
 .brand-eyebrow{font-weight:800;font-size:.62rem;letter-spacing:1.2px;color:var(--accent);text-transform:uppercase;margin-bottom:6px;text-align:center}
-#login-box h1{font-family:'Fraunces',serif;font-size:2rem;color:#d6a8c4;margin-bottom:4px}
+#login-box h1{font-family:'Fraunces',serif;font-size:2rem;color:var(--accent);margin-bottom:4px}
 #login-box p{color:#6b7280;font-size:.9rem;margin-bottom:32px}
 #login-box input{width:100%;padding:14px 16px;border:2px solid #e5e7eb;border-radius:12px;font-size:1rem;outline:none;transition:border .2s;box-sizing:border-box;margin-bottom:12px;font-family:inherit}
-#login-box input:focus{border-color:#d6a8c4}
+#login-box input:focus{border-color:var(--accent)}
 #login-remember{display:flex;align-items:center;gap:8px;margin:-2px 0 16px;text-align:left;user-select:none;cursor:pointer}
-#login-remember input{width:16px;height:16px;margin:0;accent-color:#d6a8c4;cursor:pointer}
+#login-remember input{width:16px;height:16px;margin:0;accent-color:var(--accent);cursor:pointer}
 #login-remember label{font-size:.85rem;color:#6b7280;cursor:pointer}
-#login-btn{width:100%;padding:14px;background:#d6a8c4;color:#fff;border:none;border-radius:12px;font-size:1rem;font-weight:700;cursor:pointer;transition:background .2s}
-#login-btn:hover{background:#b07898}
-#login-btn:disabled{background:#e8c8dc;cursor:not-allowed}
+#login-btn{width:100%;padding:14px;background:var(--accent);color:#fff;border:none;border-radius:12px;font-size:1rem;font-weight:700;cursor:pointer;transition:background .2s}
+#login-btn:hover{background:var(--accent-hover)}
+#login-btn:disabled{background:var(--accent-light);cursor:not-allowed}
 #login-error{color:#ef4444;font-size:.85rem;margin-top:10px;display:none}
 </style>
 <div id="login-screen">
@@ -227,7 +228,7 @@ th{font-weight:700;color:var(--ink2);font-size:0.78rem;text-transform:uppercase;
 
 <!-- DASHBOARD -->
 <div class="page active" id="page-dashboard">
-  <div id="citas-hoy-banner" style="display:none;background:linear-gradient(135deg,#d6a8c4,#c090b8);color:#fff;border-radius:16px;padding:16px 20px;margin-bottom:16px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">
+  <div id="citas-hoy-banner" style="display:none;color:#fff;border-radius:16px;padding:16px 20px;margin-bottom:16px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">
     <div style="display:flex;align-items:center;gap:12px">
       <span style="font-size:1.8rem">📅</span>
       <div>
@@ -487,7 +488,7 @@ th{font-weight:700;color:var(--ink2);font-size:0.78rem;text-transform:uppercase;
   <!-- Barra de estado de sincronización Google Calendar -->
   <div id="gcal-status-bar" style="display:none;background:#f5f3ff;border:1.5px solid #ddd6fe;border-radius:12px;padding:10px 16px;margin-bottom:12px;align-items:center;gap:10px;font-size:.88rem">
     <span id="gcal-status-icon">📅</span>
-    <span id="gcal-status-msg" style="flex:1;color:#b07898;font-weight:600">Conectando con Google Calendar…</span>
+    <span id="gcal-status-msg" style="flex:1;color:var(--accent-hover);font-weight:600">Conectando con Google Calendar…</span>
     <span id="gcal-status-time" style="color:#6b7280;font-size:.8rem"></span>
   </div>
   <!-- Eventos de Google Calendar del día -->
@@ -823,7 +824,7 @@ th{font-weight:700;color:var(--ink2);font-size:0.78rem;text-transform:uppercase;
     <div class="form-group"><label>Notas</label><textarea id="cita-notas" rows="2"></textarea></div>
     <div id="gcal-sync-opt" style="display:none;margin:8px 0 4px">
       <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:.9rem;color:var(--ink)">
-        <input type="checkbox" id="cita-gcal-sync" style="width:16px;height:16px;accent-color:#d6a8c4">
+        <input type="checkbox" id="cita-gcal-sync" style="width:16px;height:16px;accent-color:var(--accent)">
         <span>📅 Sincronizar a Google Calendar automáticamente</span>
       </label>
     </div>
@@ -975,12 +976,12 @@ function loadConfig() {
 }
 
 const _PALETAS = {
-  rosa:    {accent:'#d6a8c4',accent2:'#c090b8',hover:'#b07898',light:'#fdf0f8',bg:'#f8f7fc',surface2:'#f3f0fb',border:'#e5e0f8',ink2:'#6b5fa0',sidebarBorder:'#f0d5e6'},
-  morado:  {accent:'#9b8bc4',accent2:'#8070b0',hover:'#695a9e',light:'#f2eefb',bg:'#f5f4fc',surface2:'#ece8f8',border:'#dad4f4',ink2:'#50409e',sidebarBorder:'#e0d8f2'},
-  azul:    {accent:'#7bafd4',accent2:'#5e96c0',hover:'#4a7daa',light:'#eef5fb',bg:'#f5f7fc',surface2:'#e8f1f8',border:'#d0e3f0',ink2:'#375e8a',sidebarBorder:'#d5e8f2'},
-  teal:    {accent:'#5fb8c0',accent2:'#449ea8',hover:'#308590',light:'#ecf8f9',bg:'#f4f9fa',surface2:'#e2f3f5',border:'#c5e8ec',ink2:'#206068',sidebarBorder:'#c8e8ec'},
-  verde:   {accent:'#7ab89e',accent2:'#5fa085',hover:'#4a8970',light:'#edf8f3',bg:'#f5f9f7',surface2:'#e5f4ec',border:'#cce6d7',ink2:'#2d6b50',sidebarBorder:'#c5e5d8'},
-  naranja: {accent:'#d4956a',accent2:'#be7c50',hover:'#a86538',light:'#fdf4ed',bg:'#faf7f5',surface2:'#f5ece3',border:'#eed9c8',ink2:'#8a4e28',sidebarBorder:'#efd5b8'}
+  rosa:    {accent:'#d6a8c4',accent2:'#c090b8',hover:'#b07898',light:'#fdf0f8',bg:'#f8f7fc',surface2:'#f3f0fb',border:'#e5e0f8',ink2:'#6b5fa0',sidebarBorder:'#f0d5e6',loginDark:'#8b3068'},
+  morado:  {accent:'#9b8bc4',accent2:'#8070b0',hover:'#695a9e',light:'#f2eefb',bg:'#f5f4fc',surface2:'#ece8f8',border:'#dad4f4',ink2:'#50409e',sidebarBorder:'#e0d8f2',loginDark:'#3d2e80'},
+  azul:    {accent:'#7bafd4',accent2:'#5e96c0',hover:'#4a7daa',light:'#eef5fb',bg:'#f5f7fc',surface2:'#e8f1f8',border:'#d0e3f0',ink2:'#375e8a',sidebarBorder:'#d5e8f2',loginDark:'#1e4d80'},
+  teal:    {accent:'#5fb8c0',accent2:'#449ea8',hover:'#308590',light:'#ecf8f9',bg:'#f4f9fa',surface2:'#e2f3f5',border:'#c5e8ec',ink2:'#206068',sidebarBorder:'#c8e8ec',loginDark:'#145c62'},
+  verde:   {accent:'#7ab89e',accent2:'#5fa085',hover:'#4a8970',light:'#edf8f3',bg:'#f5f9f7',surface2:'#e5f4ec',border:'#cce6d7',ink2:'#2d6b50',sidebarBorder:'#c5e5d8',loginDark:'#1a4d38'},
+  naranja: {accent:'#d4956a',accent2:'#be7c50',hover:'#a86538',light:'#fdf4ed',bg:'#faf7f5',surface2:'#f5ece3',border:'#eed9c8',ink2:'#8a4e28',sidebarBorder:'#efd5b8',loginDark:'#7a3010'}
 };
 const _PALETAS_XP = {
   rosa:    {band:[253,240,248],bandBorder:[214,168,196],eyebrow:[192,144,184],label:[122,47,86], pendingBg:[238,227,240],pendingText:[138,85,112]},
@@ -1006,6 +1007,7 @@ function seleccionarPaleta(nombre) {
   r.setProperty('--border', pal.border);
   r.setProperty('--ink2', pal.ink2);
   r.setProperty('--sidebar-border', pal.sidebarBorder);
+  r.setProperty('--login-dark', pal.loginDark);
   const xpc = _PALETAS_XP[nombre];
   if(xpc) { XP.band=xpc.band; XP.bandBorder=xpc.bandBorder; XP.eyebrow=xpc.eyebrow; XP.label=xpc.label; XP.pendingBg=xpc.pendingBg; XP.pendingText=xpc.pendingText; }
   document.querySelectorAll('#cfg-paletas [data-paleta]').forEach(b => {
@@ -1278,9 +1280,9 @@ function renderPacientes() {
     const edad = pacEdad(p);
     const pendiente = pacTienePagoPendiente(p);
     return `
-    <div style="display:flex;align-items:center;gap:16px;padding:14px 18px;margin-bottom:9px;background:${activo ? '#fdf0f8' : '#fff'};border:1.5px solid ${activo ? '#d6a8c4' : '#ece3f5'};border-radius:12px;cursor:pointer"
+    <div style="display:flex;align-items:center;gap:16px;padding:14px 18px;margin-bottom:9px;background:${activo ? 'var(--accent-light)' : '#fff'};border:1.5px solid ${activo ? 'var(--accent)' : 'var(--border)'};border-radius:12px;cursor:pointer"
       onclick="setPacienteActivo('${p.id}')">
-      <div style="width:42px;height:42px;border-radius:50%;background:#fdf0f8;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:13px;color:#b07898;flex:none">${pacIniciales(p)}</div>
+      <div style="width:42px;height:42px;border-radius:50%;background:var(--accent-light);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:13px;color:var(--accent-hover);flex:none">${pacIniciales(p)}</div>
       <div style="flex:1;min-width:0">
         <div style="font-weight:700;font-size:14px">${p.nombre} ${p.apellido}</div>
         <div style="font-size:12px;color:#7a6a94;margin-top:1px">${edad!=null ? edad+' años · ' : ''}${p.tel||'—'}</div>
@@ -2119,7 +2121,7 @@ function mostrarOpcionesCita(c, pac) {
   // Header
   const header = document.createElement('div');
   header.style.cssText = 'display:flex;justify-content:space-between;align-items:center;margin-bottom:16px';
-  header.innerHTML = '<h3 style="margin:0;color:#b07898">Cita</h3>';
+  header.innerHTML = '<h3 style="margin:0;color:var(--accent-hover)">Cita</h3>';
   const btnX = document.createElement('button');
   btnX.textContent = '✕';
   btnX.style.cssText = 'background:none;border:none;font-size:1.2rem;cursor:pointer;color:#6b7280';
@@ -2154,7 +2156,7 @@ function mostrarOpcionesCita(c, pac) {
 
   const editBtn = document.createElement('button');
   editBtn.textContent = '✏️ Editar cita';
-  editBtn.style.cssText = 'background:#fdf0f8;color:#b07898;border:1.5px solid #d6a8c4;border-radius:12px;padding:11px;cursor:pointer;font-weight:600;font-size:.95rem';
+  editBtn.style.cssText = 'background:var(--accent-light);color:var(--accent-hover);border:1.5px solid var(--accent);border-radius:12px;padding:11px;cursor:pointer;font-weight:600;font-size:.95rem';
   editBtn.onclick = () => { popup.remove(); editarCita(c.id); };
   btns.appendChild(editBtn);
 
@@ -3998,9 +4000,9 @@ async function gcalLoadEventsHoy() {
         const yaEnApp = vinculados.has(ev.id);
         const importBtn = yaEnApp
           ? '<span style="font-size:.75rem;color:#16a34a;font-weight:600">✅ En app</span>'
-          : '<button onclick="gcalImportarEvento(' + JSON.stringify(ev).replace(/"/g, '&quot;') + ')" style="background:#d6a8c4;color:#fff;border:none;border-radius:8px;padding:4px 10px;font-size:.78rem;cursor:pointer;font-weight:600">📥 Importar</button>';
+          : '<button onclick="gcalImportarEvento(' + JSON.stringify(ev).replace(/"/g, '&quot;') + ')" style="background:var(--accent);color:#fff;border:none;border-radius:8px;padding:4px 10px;font-size:.78rem;cursor:pointer;font-weight:600">📥 Importar</button>';
         return '<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border)">'
-          + '<div style="background:#d6a8c4;color:#fff;border-radius:8px;padding:4px 8px;font-size:.78rem;font-weight:700;white-space:nowrap;min-width:54px;text-align:center">' + start + (end ? '<br>' + end : '') + '</div>'
+          + '<div style="background:var(--accent);color:#fff;border-radius:8px;padding:4px 8px;font-size:.78rem;font-weight:700;white-space:nowrap;min-width:54px;text-align:center">' + start + (end ? '<br>' + end : '') + '</div>'
           + '<div style="flex:1"><div style="font-weight:600;font-size:.9rem">' + (ev.summary || 'Sin título') + '</div>' + (ev.description ? '<div style="font-size:.8rem;color:var(--ink2)">' + ev.description + '</div>' : '') + '</div>'
           + '<div style="flex-shrink:0">' + importBtn + '</div>'
           + '</div>';
