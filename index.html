@@ -1632,6 +1632,47 @@ async function guardarHistoria() {
   toast(ok ? '✅ Historia guardada' : '❌ Error al guardar');
 }
 
+// ── FOTOS NOTAS (IndexedDB — no se guardan en Firestore) ─────────────────────
+const _IDB_NAME = 'kndFotos', _IDB_VER = 1, _IDB_STORE = 'notaFotos';
+let _idb = null;
+function idbOpen() {
+  if(_idb) return Promise.resolve(_idb);
+  return new Promise((res, rej) => {
+    const req = indexedDB.open(_IDB_NAME, _IDB_VER);
+    req.onupgradeneeded = e => e.target.result.createObjectStore(_IDB_STORE, {keyPath:'notaId'});
+    req.onsuccess = e => { _idb = e.target.result; res(_idb); };
+    req.onerror = () => rej(req.error);
+  });
+}
+async function idbGetFotos(notaId) {
+  try {
+    const db = await idbOpen();
+    return await new Promise(res => {
+      const req = db.transaction(_IDB_STORE,'readonly').objectStore(_IDB_STORE).get(notaId);
+      req.onsuccess = () => res(req.result?.fotos || []);
+      req.onerror = () => res([]);
+    });
+  } catch(e) { return []; }
+}
+async function idbSetFotos(notaId, fotos) {
+  try {
+    const db = await idbOpen();
+    await new Promise((res, rej) => {
+      const req = db.transaction(_IDB_STORE,'readwrite').objectStore(_IDB_STORE).put({notaId, fotos});
+      req.onsuccess = res; req.onerror = rej;
+    });
+  } catch(e) {}
+}
+async function idbDelFotos(notaId) {
+  try {
+    const db = await idbOpen();
+    await new Promise((res, rej) => {
+      const req = db.transaction(_IDB_STORE,'readwrite').objectStore(_IDB_STORE).delete(notaId);
+      req.onsuccess = res; req.onerror = rej;
+    });
+  } catch(e) {}
+}
+
 // ── NOTAS ──────────────────────────────────────────────────────────────────
 function toggleNotasFotosSel() {
   const wrap = document.getElementById('exp-notas-fotos-wrap');
@@ -1653,8 +1694,8 @@ function quitarFotoNota(i) {
 }
 
 function verFotoNota(notaId, idx) {
-  const fotos = notaId ? (DB.notas.find(n=>n.id===notaId)?.fotos || []) : _notaFotos;
-  const src = fotos[idx]; if(!src) return;
+  // preview de fotos en el formulario (antes de guardar)
+  const src = _notaFotos[idx]; if(!src) return;
   const overlay = document.createElement('div');
   overlay.style.cssText = 'position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.85);display:flex;align-items:center;justify-content:center;cursor:pointer';
   overlay.onclick = () => overlay.remove();
@@ -1686,7 +1727,7 @@ function onNotaFotosChange(input) {
   });
 }
 
-function cargarNotas() {
+async function cargarNotas() {
   const pacId = document.getElementById('select-paciente-notas')?.value || pacienteActivo;
   const overlay = document.getElementById('notas-overlay');
   const lista = document.getElementById('lista-notas');
@@ -1694,10 +1735,12 @@ function cargarNotas() {
   if(overlay) overlay.style.display='none';
   const notas = DB.notas.filter(n => n.pacienteId === pacId).sort((a,b) => b.fecha.localeCompare(a.fecha));
   if(!notas.length) { lista.innerHTML='<div class="card"><p style="color:var(--ink2)">Sin notas clínicas</p></div>'; return; }
-  lista.innerHTML = notas.map(n => {
-    const fotosHtml = (n.fotos && n.fotos.length) ? `
+  const fotosPorNota = await Promise.all(notas.map(n => idbGetFotos(n.id)));
+  lista.innerHTML = notas.map((n, ni) => {
+    const fotos = fotosPorNota[ni];
+    const fotosHtml = fotos.length ? `
       <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;padding-top:8px;border-top:1px solid var(--border)">
-        ${n.fotos.map((f,i) => `<img src="${f}" style="width:80px;height:80px;object-fit:cover;border-radius:8px;border:1.5px solid var(--border);cursor:pointer" onclick="verFotoNota('${n.id}',${i})">`).join('')}
+        ${fotos.map((f,i) => `<img src="${f}" style="width:80px;height:80px;object-fit:cover;border-radius:8px;border:1.5px solid var(--border);cursor:pointer" onclick="verFotoNotaIdb('${n.id}',${i})">`).join('')}
       </div>` : '';
     return `
     <div class="card" style="margin-bottom:10px">
@@ -1722,13 +1765,24 @@ function abrirNuevaNota() {
   document.getElementById('form-nota').style.display = 'block';
 }
 
-function editarNota(id) {
+async function editarNota(id) {
   const n = DB.notas.find(x => x.id === id); if(!n) return;
-  notaEditId = id; _notaFotos = (n.fotos || []).slice();
+  notaEditId = id; _notaFotos = await idbGetFotos(id);
   document.getElementById('nota-fecha').value = n.fecha || '';
   document.getElementById('nota-hallazgos').value = n.hallazgos || '';
   renderNotaFotosPreview();
   document.getElementById('form-nota').style.display = 'block';
+}
+
+async function verFotoNotaIdb(notaId, idx) {
+  const fotos = await idbGetFotos(notaId);
+  const src = fotos[idx]; if(!src) return;
+  const overlay = document.createElement('div');
+  overlay.style.cssText = 'position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.85);display:flex;align-items:center;justify-content:center;cursor:pointer';
+  overlay.onclick = () => overlay.remove();
+  const img = document.createElement('img');
+  img.src = src; img.style.cssText = 'max-width:92vw;max-height:88vh;border-radius:10px;box-shadow:0 8px 40px rgba(0,0,0,.6)';
+  overlay.appendChild(img); document.body.appendChild(overlay);
 }
 
 function cancelarNota() {
@@ -1740,11 +1794,13 @@ function cancelarNota() {
 async function guardarNota() {
   const pacId = document.getElementById('select-paciente-notas')?.value || pacienteActivo;
   if(!pacId) { toast('⚠️ Selecciona un paciente'); return; }
-  const data = { pacienteId:pacId, fecha:document.getElementById('nota-fecha').value, hallazgos:document.getElementById('nota-hallazgos').value, fotos:_notaFotos.slice() };
+  // fotos se guardan en IndexedDB, NO en Firestore
+  const data = { pacienteId:pacId, fecha:document.getElementById('nota-fecha').value, hallazgos:document.getElementById('nota-hallazgos').value };
   toast('⏳ Guardando...');
   if(notaEditId) {
     const ok = await fbSave('notas', notaEditId, data);
     if(ok) {
+      await idbSetFotos(notaEditId, _notaFotos.slice());
       const idx = DB.notas.findIndex(n => n.id === notaEditId);
       if(idx>=0) DB.notas[idx] = {id:notaEditId,...data};
       notaEditId=null; _notaFotos=[]; document.getElementById('form-nota').style.display='none';
@@ -1753,6 +1809,7 @@ async function guardarNota() {
   } else {
     const id = await fbAdd('notas', data);
     if(id) {
+      await idbSetFotos(id, _notaFotos.slice());
       data.id=id; DB.notas.push(data); _notaFotos=[];
       document.getElementById('form-nota').style.display='none';
       cargarNotas(); toast('✅ Nota guardada');
@@ -1763,7 +1820,10 @@ async function guardarNota() {
 async function borrarNota(id) {
   if(!confirm('¿Eliminar esta nota?')) return;
   const ok = await fbDel('notas', id);
-  if(ok) { DB.notas=DB.notas.filter(n=>n.id!==id); cargarNotas(); toast('🗑️ Nota eliminada'); }
+  if(ok) {
+    await idbDelFotos(id);
+    DB.notas=DB.notas.filter(n=>n.id!==id); cargarNotas(); toast('🗑️ Nota eliminada');
+  }
 }
 
 // ── PRESUPUESTOS ──────────────────────────────────────────────────────────
@@ -3177,7 +3237,7 @@ function xpOdontogramaPage(doc, pac, fechaStr, regs, tipo) {
   });
 }
 
-function xpNotasPage(doc, pac, fechaStr, notas, conFotos) {
+async function xpNotasPage(doc, pac, fechaStr, notas, conFotos) {
   let y = xpNewSectionPage(doc, 'Notas clínicas', pac, fechaStr) + 8;
   if(!notas.length) {
     doc.setFont('helvetica','normal'); doc.setFontSize(9); doc.setTextColor(...XP.muted);
@@ -3185,10 +3245,14 @@ function xpNotasPage(doc, pac, fechaStr, notas, conFotos) {
     return;
   }
   const fotoW = 55, fotoH = 42, fotoCols = 3, fotoGap = 4;
-  notas.forEach((n, idx) => {
+  const fotosPorNota = conFotos
+    ? await Promise.all(notas.map(n => idbGetFotos(n.id)))
+    : notas.map(() => []);
+  for(let idx = 0; idx < notas.length; idx++) {
+    const n = notas[idx];
     doc.setFont('helvetica','normal'); doc.setFontSize(8.6);
     const lines = doc.splitTextToSize(n.hallazgos||'', 160);
-    const fotosValidas = conFotos ? (n.fotos||[]).filter(f=>f&&f.startsWith('data:')) : [];
+    const fotosValidas = fotosPorNota[idx].filter(f=>f&&f.startsWith('data:'));
     const fotosRows = Math.ceil(fotosValidas.length / fotoCols);
     const fotoSectionH = fotosValidas.length ? (fotosRows * (fotoH + fotoGap) + 6) : 0;
     const blockH = Math.max(18, 12 + lines.length*4) + fotoSectionH;
@@ -3217,7 +3281,7 @@ function xpNotasPage(doc, pac, fechaStr, notas, conFotos) {
       });
     }
     y += blockH + 6;
-  });
+  }
 }
 
 function xpPresupuestosPage(doc, pac, fechaStr, presups) {
@@ -3525,7 +3589,7 @@ async function exportarExpediente(pacId) {
   if(incNotas) {
     const notas = DB.notas.filter(n => n.pacienteId === pacId).sort((a,b) => (xpParseFecha(b.fecha)||0) - (xpParseFecha(a.fecha)||0));
     const conFotos = document.getElementById('exp-notas-fotos')?.checked !== false;
-    xpNotasPage(doc, pac, fechaStr, notas, conFotos);
+    await xpNotasPage(doc, pac, fechaStr, notas, conFotos);
   }
   if(incPresup) {
     const presupSelId = document.getElementById('exp-presup-sel')?.value || 'todos';
