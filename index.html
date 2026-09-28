@@ -879,7 +879,8 @@ const firebaseConfig = {
 };
 const fbApp   = firebase.initializeApp(firebaseConfig);
 const db      = firebase.firestore();
-const fbStore = firebase.storage();
+let fbStore = null;
+try { fbStore = firebase.storage(); } catch(e) { console.warn('Firebase Storage no disponible:', e); }
 
 // ── AUTH ───────────────────────────────────────────────────────────────────
 firebase.auth().onAuthStateChanged(user => {
@@ -1638,6 +1639,7 @@ async function guardarHistoria() {
 
 // ── FOTOS NOTAS (Firebase Storage) ────────────────────────────────────────────
 async function storageGetFotoUrls(notaId) {
+  if(!fbStore) return [];
   try {
     const list = await fbStore.ref(`notas_fotos/${notaId}`).listAll();
     if(!list.items.length) return [];
@@ -1657,6 +1659,7 @@ async function storageUrlToDataUrl(url) {
   } catch(e) { return null; }
 }
 async function storageSetFotos(notaId, fotosBase64) {
+  if(!fbStore) return;
   try {
     const list = await fbStore.ref(`notas_fotos/${notaId}`).listAll();
     await Promise.all(list.items.map(item => item.delete().catch(()=>{})));
@@ -1667,6 +1670,7 @@ async function storageSetFotos(notaId, fotosBase64) {
   }
 }
 async function storageDelFotos(notaId) {
+  if(!fbStore) return;
   try {
     const list = await fbStore.ref(`notas_fotos/${notaId}`).listAll();
     await Promise.all(list.items.map(item => item.delete().catch(()=>{})));
@@ -1802,7 +1806,6 @@ async function guardarNota() {
     const ok = await fbSave('notas', notaEditId, data);
     if(ok) {
       if(_notaFotos.length) { toast('⏳ Subiendo fotos...'); await storageSetFotos(notaEditId, _notaFotos.slice()); }
-      else await storageDelFotos(notaEditId);
       const idx = DB.notas.findIndex(n => n.id === notaEditId);
       if(idx>=0) DB.notas[idx] = {id:notaEditId,...data};
       notaEditId=null; _notaFotos=[]; document.getElementById('form-nota').style.display='none';
