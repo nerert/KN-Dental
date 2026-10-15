@@ -1658,11 +1658,32 @@ async function storageSetFotos(notaId, fotosBase64) { await _idb.set(notaId, fot
 async function storageDelFotos(notaId) { await _idb.del(notaId); }
 function verFotoUrl(url) {
   const overlay = document.createElement('div');
-  overlay.style.cssText = 'position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.85);display:flex;align-items:center;justify-content:center;cursor:pointer';
-  overlay.onclick = () => overlay.remove();
+  overlay.style.cssText = 'position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.9);display:flex;overflow:auto;touch-action:pan-x pan-y pinch-zoom';
   const img = document.createElement('img');
-  img.src = url; img.style.cssText = 'max-width:92vw;max-height:88vh;border-radius:10px;box-shadow:0 8px 40px rgba(0,0,0,.6)';
-  overlay.appendChild(img); document.body.appendChild(overlay);
+  img.src = url; img.draggable = false;
+  img.style.cssText = 'margin:auto;border-radius:10px;box-shadow:0 8px 40px rgba(0,0,0,.6)';
+  let zoom = 1;
+  const aplicar = () => {
+    img.style.cssText = zoom === 1
+      ? 'margin:auto;max-width:92vw;max-height:88vh;border-radius:10px;box-shadow:0 8px 40px rgba(0,0,0,.6);cursor:zoom-in'
+      : `margin:auto;width:${zoom * 92}vw;max-width:none;max-height:none;border-radius:10px;box-shadow:0 8px 40px rgba(0,0,0,.6);cursor:zoom-out`;
+  };
+  const cambiar = f => { zoom = Math.min(5, Math.max(1, zoom * f)); aplicar(); };
+  aplicar();
+  img.onclick = e => { e.stopPropagation(); cambiar(zoom === 1 ? 2.5 : 1 / zoom); };
+  overlay.onclick = e => { if(e.target === overlay) overlay.remove(); };
+  overlay.addEventListener('wheel', e => { e.preventDefault(); cambiar(e.deltaY < 0 ? 1.15 : 1 / 1.15); }, {passive:false});
+  const barra = document.createElement('div');
+  barra.style.cssText = 'position:fixed;top:12px;right:12px;display:flex;gap:8px;z-index:10000';
+  const boton = (txt, fn) => {
+    const b = document.createElement('button');
+    b.textContent = txt;
+    b.style.cssText = 'width:40px;height:40px;border-radius:50%;border:none;background:rgba(255,255,255,.9);font-size:1.2rem;font-weight:700;cursor:pointer';
+    b.onclick = e => { e.stopPropagation(); fn(); };
+    return b;
+  };
+  barra.append(boton('+', () => cambiar(1.5)), boton('−', () => cambiar(1 / 1.5)), boton('✕', () => overlay.remove()));
+  overlay.appendChild(img); overlay.appendChild(barra); document.body.appendChild(overlay);
 }
 
 // ── NOTAS ──────────────────────────────────────────────────────────────────
